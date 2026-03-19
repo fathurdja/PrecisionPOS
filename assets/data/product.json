@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1,
+    "nama": "Espresso",
+    "harga": 25000,
+    "stok": 50
+  },
+  {
+    "id": 2,
+    "nama": "Americano",
+    "harga": 30000,
+    "stok": 40
+  },
+  {
+    "id": 3,
+    "nama": "Cafe Latte",
+    "harga": 35000,
+    "stok": 30
+  },
+  {
+    "id": 4,
+    "nama": "Cappuccino",
+    "harga": 35000,
+    "stok": 30
+  },
+  {
+    "id": 5,
+    "nama": "Mocha",
+    "harga": 40000,
+    "stok": 20
+  },
+  {
+    "id": 6,
+    "nama": "Caramel Macchiato",
+    "harga": 45000,
+    "stok": 25
+  },
+  {
+    "id": 7,
+    "nama": "Croissant",
+    "harga": 20000,
+    "stok": 15
+  },
+  {
+    "id": 8,
+    "nama": "Chocolate cookie",
+    "harga": 15000,
+    "stok": 20
+  }
+]
