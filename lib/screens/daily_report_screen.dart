@@ -1,10 +1,85 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 import '../theme/app_colors.dart';
 import '../widgets/top_app_bar.dart';
+import '../repositories/transaction_repository.dart';
+import '../services/data_export_service.dart';
+import '../services/data_import_service.dart';
 
-class DailyReportScreen extends StatelessWidget {
+class DailyReportScreen extends StatefulWidget {
   const DailyReportScreen({super.key});
+
+  @override
+  State<DailyReportScreen> createState() => _DailyReportScreenState();
+}
+
+class _DailyReportScreenState extends State<DailyReportScreen> {
+  final TransactionRepository _repo = TransactionRepository();
+  bool _isLoading = true;
+  double _todaySales = 0.0;
+  int _itemsSold = 0;
+  double _avgTicket = 0.0;
+  List<Map<String, dynamic>> _hourlyPerformance = [];
+  List<double> _hourlyBuckets = List.filled(7, 0.0);
+  double _maxHourlySales = 100.0;
+  List<Map<String, dynamic>> _recentTransactions = [];
+  DateTime _selectedDate = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    
+    // Convert selected date to string for repository methods
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    final summary = await _repo.getSummaryByDate(dateStr);
+    final itemsSold = await _repo.getTotalItemsSoldByDate(dateStr);
+    final hourly = await _repo.getHourlyPerformanceByDate(dateStr);
+    final recent = await _repo.getTransactionsByDateWithItems(dateStr, limit: 5);
+    
+    if (mounted) {
+      setState(() {
+        _todaySales = summary['total_sales'] ?? 0.0;
+        final totalOrders = summary['total_orders'] ?? 0;
+        _itemsSold = itemsSold;
+        _avgTicket = totalOrders > 0 ? (_todaySales / totalOrders) : 0.0;
+        _hourlyPerformance = hourly;
+        
+        _hourlyBuckets = List.filled(7, 0.0);
+        _maxHourlySales = 100.0;
+        for (var data in _hourlyPerformance) {
+          int hour = int.tryParse(data['hour'].toString()) ?? 0;
+          double sales = (data['hourly_sales'] as num?)?.toDouble() ?? 0.0;
+          int bucketIndex = 0;
+          if (hour >= 8 && hour < 10) bucketIndex = 0;
+          else if (hour >= 10 && hour < 12) bucketIndex = 1;
+          else if (hour >= 12 && hour < 14) bucketIndex = 2;
+          else if (hour >= 14 && hour < 16) bucketIndex = 3;
+          else if (hour >= 16 && hour < 18) bucketIndex = 4;
+          else if (hour >= 18 && hour < 20) bucketIndex = 5;
+          else if (hour >= 20) bucketIndex = 6;
+          _hourlyBuckets[bucketIndex] += sales;
+        }
+        for (double val in _hourlyBuckets) {
+          if (val > _maxHourlySales) _maxHourlySales = val;
+        }
+        _maxHourlySales = _maxHourlySales * 1.2;
+
+        _recentTransactions = recent;
+        _isLoading = false;
+      });
+    }
+  }
+
+  String _formatCurrency(double amount) {
+    final format = NumberFormat.currency(locale: 'en_US', symbol: '\$');
+    return format.format(amount);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,26 +160,103 @@ class DailyReportScreen extends StatelessWidget {
   }
 
   Widget _buildHeadline() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    bool isToday = DateFormat('yyyy-MM-dd').format(_selectedDate) == DateFormat('yyyy-MM-dd').format(DateTime.now());
+    
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          'Daily Report',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
-            color: AppColors.primary,
-            letterSpacing: -0.5,
-          ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isToday ? 'Daily Report' : 'Past Report',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: AppColors.primary,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 4),
+            InkWell(
+              onTap: () async {
+                final DateTime? picked = await showDatePicker(
+                  context: context,
+                  initialDate: _selectedDate,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now(),
+                  builder: (context, child) {
+                    return Theme(
+                      data: Theme.of(context).copyWith(
+                        colorScheme: const ColorScheme.light(
+                          primary: AppColors.primary,
+                          onPrimary: Colors.white,
+                          onSurface: AppColors.onSurface,
+                        ),
+                      ),
+                      child: child!,
+                    );
+                  },
+                );
+                if (picked != null && picked != _selectedDate) {
+                  setState(() {
+                    _selectedDate = picked;
+                  });
+                  _loadData();
+                }
+              },
+              borderRadius: BorderRadius.circular(4),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.calendar_month, size: 16, color: AppColors.onSurfaceVariant),
+                    const SizedBox(width: 6),
+                    Text(
+                      DateFormat('EEEE, MMM d, yyyy').format(_selectedDate),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.arrow_drop_down, size: 16, color: AppColors.onSurfaceVariant),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          'Tuesday, Oct 24, 2023',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: AppColors.onSurfaceVariant,
-          ),
+        Row(
+          children: [
+            IconButton(
+              icon: Icon(Icons.chevron_left, color: AppColors.primary),
+              onPressed: () {
+                setState(() {
+                  _selectedDate = _selectedDate.subtract(const Duration(days: 1));
+                });
+                _loadData();
+              },
+              style: IconButton.styleFrom(
+                backgroundColor: AppColors.surfaceContainerHigh,
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: Icon(Icons.chevron_right, color: isToday ? AppColors.outlineVariant : AppColors.primary),
+              onPressed: isToday ? null : () {
+                setState(() {
+                  _selectedDate = _selectedDate.add(const Duration(days: 1));
+                });
+                _loadData();
+              },
+              style: IconButton.styleFrom(
+                backgroundColor: AppColors.surfaceContainerHigh,
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -155,21 +307,12 @@ class DailyReportScreen extends StatelessWidget {
                 textBaseline: TextBaseline.alphabetic,
                 children: [
                   Text(
-                    '\$12,482.00',
+                    _isLoading ? '...' : _formatCurrency(_todaySales),
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w900,
                       color: AppColors.primary,
                       letterSpacing: -1.5,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '+14.2%',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.secondary,
                     ),
                   ),
                 ],
@@ -204,7 +347,7 @@ class DailyReportScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '432',
+                      _isLoading ? '...' : _itemsSold.toString(),
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
@@ -240,7 +383,7 @@ class DailyReportScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '\$28.90',
+                      _isLoading ? '...' : _formatCurrency(_avgTicket),
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
@@ -348,16 +491,13 @@ class DailyReportScreen extends StatelessWidget {
                 ),
                 gridData: const FlGridData(show: false),
                 borderData: FlBorderData(show: false),
-                barGroups: [
-                  _buildBarGroup(0, 40, AppColors.surfaceContainer),
-                  _buildBarGroup(1, 55, AppColors.surfaceContainer),
-                  _buildBarGroup(2, 75, AppColors.secondary),
-                  _buildBarGroup(3, 95, AppColors.primary),
-                  _buildBarGroup(4, 65, AppColors.surfaceContainer),
-                  _buildBarGroup(5, 45, AppColors.surfaceContainer),
-                  _buildBarGroup(6, 30, AppColors.surfaceContainer),
-                ],
-                maxY: 100,
+                barGroups: List.generate(7, (index) {
+                  double val = _hourlyBuckets[index];
+                  double maxVal = _hourlyBuckets.reduce((a, b) => a > b ? a : b);
+                  Color color = (val > 0 && val == maxVal) ? AppColors.primary : AppColors.surfaceContainer;
+                  return _buildBarGroup(index, val, color);
+                }),
+                maxY: _maxHourlySales,
               ),
             ),
           ),
@@ -460,26 +600,53 @@ class DailyReportScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              _buildTableRow('Espresso Roast', '#TRX-8291', '02', '\$18.00'),
-              Divider(height: 1, color: AppColors.outlineVariant.withValues(alpha: 0.1)),
-              _buildTableRow('Artisan Sourdough', '#TRX-8292', '01', '\$12.50'),
-              Divider(height: 1, color: AppColors.outlineVariant.withValues(alpha: 0.1)),
-              _buildTableRow('Cold Brew (L)', '#TRX-8293', '03', '\$21.00'),
+              if (_isLoading)
+                const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
+              else if (_recentTransactions.isEmpty)
+                const Padding(padding: EdgeInsets.all(24), child: Text('No recent transactions.'))
+              else
+                ...List.generate(_recentTransactions.length, (index) {
+                  final txData = _recentTransactions[index];
+                  final tx = txData['transaction'];
+                  final String receiptId = tx['receipt_id'].toString();
+                  final double amount = tx['total_harga'] ?? 0.0;
+                  final String itemName = txData['item_name'];
+                  final int qty = txData['qty'];
+                  
+                  return Column(
+                    children: [
+                      _buildTableRow(
+                        itemName, 
+                        '#${receiptId.length > 8 ? receiptId.substring(receiptId.length - 8) : receiptId}', 
+                        qty.toString().padLeft(2, '0'), 
+                        _formatCurrency(amount)
+                      ),
+                      if (index < _recentTransactions.length - 1)
+                        Divider(height: 1, color: AppColors.outlineVariant.withValues(alpha: 0.1)),
+                    ],
+                  );
+                }),
               // View Full Journal
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLow,
-                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-                ),
-                child: Center(
-                  child: Text(
-                    'VIEW FULL JOURNAL',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.onPrimaryFixedVariant,
-                      letterSpacing: 1.5,
+              InkWell(
+                onTap: () {
+                  // Navigate to History Screen
+                  Navigator.pushNamed(context, '/history');
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLow,
+                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'VIEW FULL JOURNAL',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryFixedDim,
+                        letterSpacing: 1.5,
+                      ),
                     ),
                   ),
                 ),
@@ -592,7 +759,20 @@ class DailyReportScreen extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () {},
+              onPressed: () async {
+                try {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Preparing export...')),
+                  );
+                  await DataExportService().exportTransactions();
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Export failed: \$e')),
+                    );
+                  }
+                }
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.secondaryFixed,
                 foregroundColor: AppColors.onSecondaryFixed,
@@ -615,7 +795,23 @@ class DailyReportScreen extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: () {},
+              onPressed: () async {
+                try {
+                  await DataImportService().importTransactions();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Data imported successfully!')),
+                    );
+                    _loadData(); // reload dashboard
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Import failed: \$e')),
+                    );
+                  }
+                }
+              },
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),

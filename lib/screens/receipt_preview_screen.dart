@@ -4,6 +4,8 @@ import '../widgets/top_app_bar.dart';
 
 import '../models/transaction_model.dart';
 import '../models/order_item_model.dart';
+import '../services/pdf_receipt_service.dart';
+import '../services/whatsapp_service.dart';
 
 class ReceiptPreviewScreen extends StatelessWidget {
   final TransactionModel transaction;
@@ -30,7 +32,7 @@ class ReceiptPreviewScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Column(
                 children: [
-                  _buildActionButtons(),
+                  _buildActionButtons(context),
                   const SizedBox(height: 32),
                   _buildReceiptCard(),
                   const SizedBox(height: 32),
@@ -53,12 +55,21 @@ class ReceiptPreviewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(BuildContext context) {
     return Row(
       children: [
         Expanded(
           child: ElevatedButton.icon(
-            onPressed: () {},
+            onPressed: () async {
+              try {
+                final pdfFile = await PdfReceiptService().getPdfFile(transaction, items);
+                await WhatsAppService().sharePdfFile(pdfFile, text: 'Receipt from Precision POS (\${transaction.receiptId})');
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to share: \$e')));
+                }
+              }
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
@@ -77,7 +88,15 @@ class ReceiptPreviewScreen extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: ElevatedButton.icon(
-            onPressed: () {},
+            onPressed: () async {
+              try {
+                await PdfReceiptService().printReceipt(transaction, items);
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to print: \$e')));
+                }
+              }
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.secondaryContainer,
               foregroundColor: AppColors.onSecondaryContainer,

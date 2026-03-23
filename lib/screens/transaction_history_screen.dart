@@ -116,28 +116,31 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const AppTopBar(),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: _loadTransactions,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 16),
-                  _buildSearchBar(),
-                  const SizedBox(height: 24),
-                  _buildDynamicList(),
-                  const SizedBox(height: 100),
-                ],
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9F9FE),
+      body: Column(
+        children: [
+          const AppTopBar(),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadTransactions,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 16),
+                    _buildSearchBar(),
+                    const SizedBox(height: 24),
+                    _buildDynamicList(),
+                    const SizedBox(height: 100),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

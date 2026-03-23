@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../models/transaction_model.dart';
 import '../models/order_item_model.dart';
+import '../services/pdf_receipt_service.dart';
+import '../services/whatsapp_service.dart';
 
 class PaymentSuccessScreen extends StatelessWidget {
   final TransactionModel transaction;
@@ -58,7 +60,7 @@ class PaymentSuccessScreen extends StatelessWidget {
               const SizedBox(height: 32),
               _buildDigitalReceipt(),
               const SizedBox(height: 32),
-              _buildActionButtons(),
+              _buildActionButtons(context),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
@@ -219,12 +221,21 @@ class PaymentSuccessScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(BuildContext context) {
     return Row(
       children: [
         Expanded(
           child: OutlinedButton.icon(
-            onPressed: () {},
+            onPressed: () async {
+              try {
+                final pdfFile = await PdfReceiptService().getPdfFile(transaction, items);
+                await WhatsAppService().sharePdfFile(pdfFile, text: 'Receipt from Precision POS (\${transaction.receiptId})');
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to share: \$e')));
+                }
+              }
+            },
             style: OutlinedButton.styleFrom(
               foregroundColor: const Color(0xFF25D366),
               side: const BorderSide(color: Color(0xFF25D366)),
@@ -238,7 +249,15 @@ class PaymentSuccessScreen extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: OutlinedButton.icon(
-            onPressed: () {},
+            onPressed: () async {
+              try {
+                await PdfReceiptService().printReceipt(transaction, items);
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to print: \$e')));
+                }
+              }
+            },
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.primary,
               side: const BorderSide(color: AppColors.primary),

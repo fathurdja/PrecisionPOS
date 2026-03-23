@@ -1,11 +1,50 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../theme/app_colors.dart';
 import '../widgets/top_app_bar.dart';
+import '../repositories/transaction_repository.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   final VoidCallback? onNewOrder;
 
   const DashboardScreen({super.key, this.onNewOrder});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  final TransactionRepository _repo = TransactionRepository();
+  bool _isLoading = true;
+  double _todaySales = 0.0;
+  int _totalOrders = 0;
+  List<Map<String, dynamic>> _recentTransactions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    final summary = await _repo.getTodaySalesSummary();
+    final recent = await _repo.getRecentTransactionsWithItems(limit: 5);
+    
+    if (mounted) {
+      setState(() {
+        _todaySales = summary['total_sales'] ?? 0.0;
+        _totalOrders = summary['total_orders'] ?? 0;
+        _recentTransactions = recent;
+        _isLoading = false;
+      });
+    }
+  }
+
+  String _formatCurrency(double amount) {
+    final format = NumberFormat.currency(locale: 'en_US', symbol: '\$');
+    return format.format(amount);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,9 +108,9 @@ class DashboardScreen extends StatelessWidget {
         const SizedBox(height: 16),
         Row(
           children: [
-            Expanded(child: _buildStatCard("TODAY'S SALES", '\$4,820.50', '12.5%', Icons.trending_up)),
+            Expanded(child: _buildStatCard("TODAY'S SALES", _isLoading ? '...' : _formatCurrency(_todaySales), 'Live', Icons.trending_up)),
             const SizedBox(width: 16),
-            Expanded(child: _buildStatCard('TOTAL ORDERS', '142', '+8 new', Icons.check_circle)),
+            Expanded(child: _buildStatCard('TOTAL ORDERS', _isLoading ? '...' : _totalOrders.toString(), 'Today', Icons.check_circle)),
           ],
         ),
       ],
@@ -154,8 +193,8 @@ class DashboardScreen extends StatelessWidget {
         // New Order - Full width primary gradient
         GestureDetector(
           onTap: () {
-            if (onNewOrder != null) {
-              onNewOrder!();
+            if (widget.onNewOrder != null) {
+              widget.onNewOrder!();
             } else {
               Navigator.pushNamed(context, '/order');
             }
@@ -312,11 +351,25 @@ class DashboardScreen extends StatelessWidget {
             ),
           ),
           child: Column(
-            children: [
-              _buildTransactionItem('Order #8821', '10:42 AM • Credit Card', '\$124.00', false),
-              _buildTransactionItem('Order #8820', '09:15 AM • Cash', '\$42.50', true),
-              _buildTransactionItem('Order #8819', '08:30 AM • Credit Card', '\$215.90', false),
-            ],
+            children: _isLoading 
+              ? [const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))]
+              : _recentTransactions.isEmpty
+                  ? [const Padding(padding: EdgeInsets.all(24), child: Text('No recent transactions.'))]
+                  : List.generate(_recentTransactions.length, (index) {
+                      final txData = _recentTransactions[index];
+                      final tx = txData['transaction'];
+                      final String status = tx['status'];
+                      final double amount = tx['total_harga'] ?? 0.0;
+                      final String timeStr = DateTime.parse(tx['tanggal']).toLocal().toString().substring(11, 16);
+                      final String receiptId = tx['receipt_id'].toString();
+                      
+                      return _buildTransactionItem(
+                        'Order #${receiptId.length > 4 ? receiptId.substring(receiptId.length - 4) : receiptId}', 
+                        '$timeStr • $status', 
+                        _formatCurrency(amount), 
+                        index % 2 != 0
+                      );
+                    }),
           ),
         ),
       ],

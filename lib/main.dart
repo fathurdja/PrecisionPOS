@@ -37,6 +37,7 @@ class PrecisionPOSApp extends StatelessWidget {
       home: const MainShell(),
       routes: {
         '/order': (context) => const OrderInputScreen(),
+        '/history': (context) => const TransactionHistoryScreen(),
       },
     );
   }
