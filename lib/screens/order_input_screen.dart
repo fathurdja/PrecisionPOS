@@ -7,14 +7,17 @@ import '../models/order_item_model.dart';
 import '../repositories/product_repository.dart';
 import '../repositories/transaction_repository.dart';
 import '../utils/helpers.dart';
+import 'payment_method_screen.dart';
 
 class CartItem {
   final ProductModel product;
   int qty;
+  int bonusQty;
 
-  CartItem({required this.product, this.qty = 1});
+  CartItem({required this.product, this.qty = 1, this.bonusQty = 0});
 
   double get subtotal => product.harga * qty;
+  int get totalQty => qty + bonusQty;
 }
 
 class OrderInputScreen extends StatefulWidget {
@@ -26,14 +29,13 @@ class OrderInputScreen extends StatefulWidget {
 
 class _OrderInputScreenState extends State<OrderInputScreen> {
   final ProductRepository _productRepo = ProductRepository();
-  final TransactionRepository _transactionRepo = TransactionRepository();
 
   List<ProductModel> _availableProducts = [];
   List<CartItem> _cart = [];
-  
+
   String _receiptNumber = '';
   String _issueDate = '';
-  
+
   ProductModel? _selectedProduct;
 
   @override
@@ -63,45 +65,51 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
   double get tax => subtotal * 0.08;
   double get total => subtotal + tax;
 
-  Future<void> _processPayment() async {
+  void _processPayment() {
     if (_cart.isEmpty) return;
-    
+
     final transaction = TransactionModel(
       receiptId: _receiptNumber,
       tanggal: _issueDate,
       totalHarga: total,
-      status: 'Completed',
+      status: 'Pending',
     );
-    
-    final items = _cart.map((item) => OrderItemModel(
-      receiptId: _receiptNumber,
-      productId: item.product.id,
-      qty: item.qty,
-      subtotal: item.subtotal,
-    )).toList();
-    
-    await _transactionRepo.saveTransaction(transaction, items);
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_circle, color: AppColors.primary),
-              const SizedBox(width: 12),
-              const Expanded(child: Text('Payment Processed Successfully!', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold))),
-            ],
-          ),
-          backgroundColor: AppColors.surfaceContainerHigh,
-          behavior: SnackBarBehavior.floating,
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
-      
-      _initOrder();
-      _loadProducts();
-    }
+
+    final items = _cart
+        .expand((item) {
+          final list = <OrderItemModel>[];
+          if (item.qty > 0) {
+            list.add(OrderItemModel(
+              receiptId: _receiptNumber,
+              productId: item.product.id,
+              qty: item.qty,
+              subtotal: item.subtotal,
+            ));
+          }
+          if (item.bonusQty > 0) {
+            list.add(OrderItemModel(
+              receiptId: _receiptNumber,
+              productId: item.product.id,
+              qty: item.bonusQty,
+              subtotal: 0,
+            ));
+          }
+          return list;
+        })
+        .toList();
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            PaymentMethodScreen(transaction: transaction, items: items),
+      ),
+    ).then((_) {
+      if (mounted) {
+        _initOrder();
+        _loadProducts();
+      }
+    });
   }
 
   @override
@@ -127,11 +135,6 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
             ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: AppColors.secondaryContainer,
-        child: Icon(Icons.add, color: AppColors.onSecondaryContainer),
       ),
       bottomSheet: _buildCheckoutPanel(),
     );
@@ -180,7 +183,7 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              _issueDate.isNotEmpty && _issueDate.length >= 16 
+              _issueDate.isNotEmpty && _issueDate.length >= 16
                   ? _issueDate.substring(0, 16).replaceFirst('T', ' ')
                   : 'Today',
               style: TextStyle(
@@ -222,35 +225,45 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        
+
         // Product Dropdown
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color: AppColors.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+            border: Border.all(
+              color: AppColors.outlineVariant.withValues(alpha: 0.3),
+            ),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<ProductModel>(
               isExpanded: true,
               hint: Text('Select Product to Add'),
               value: _selectedProduct,
-              items: _availableProducts.map((p) => DropdownMenuItem(
-                value: p,
-                child: Text('${p.nama} - Rp ${p.harga.toInt()} (Stock: ${p.stok})'),
-              )).toList(),
+              items: _availableProducts
+                  .map(
+                    (p) => DropdownMenuItem(
+                      value: p,
+                      child: Text(
+                        '${p.nama} - Rp ${p.harga.toInt()} (Stock: ${p.stok})',
+                      ),
+                    ),
+                  )
+                  .toList(),
               onChanged: (product) {
                 if (product != null && product.stok > 0) {
                   setState(() {
                     _selectedProduct = null;
-                    int existingIdx = _cart.indexWhere((c) => c.product.id == product.id);
+                    int existingIdx = _cart.indexWhere(
+                      (c) => c.product.id == product.id,
+                    );
                     if (existingIdx >= 0) {
-                        if (_cart[existingIdx].qty < product.stok) {
-                          _cart[existingIdx].qty++;
-                        }
+                      if (_cart[existingIdx].totalQty < product.stok) {
+                        _cart[existingIdx].qty++;
+                      }
                     } else {
-                        _cart.add(CartItem(product: product, qty: 1));
+                      _cart.add(CartItem(product: product, qty: 1));
                     }
                   });
                 }
@@ -259,9 +272,9 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        
+
         if (_cart.isEmpty) _buildEmptyState(),
-        
+
         ..._cart.asMap().entries.map((entry) {
           int idx = entry.key;
           CartItem item = entry.value;
@@ -272,12 +285,34 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
               item.product.nama,
               item.product.harga,
               item.qty,
+              item.bonusQty,
               (newQty) {
                 setState(() {
-                  if (newQty <= 0) {
+                  if (newQty < 0) return;
+                  if (newQty == 0 && item.bonusQty == 0) {
                     _cart.removeAt(idx);
-                  } else if (newQty <= item.product.stok) {
-                    item.qty = newQty;
+                  } else {
+                    int totalQtyForProduct = _cart
+                        .where((c) => c.product.id == item.product.id && c != item)
+                        .fold(0, (sum, c) => sum + c.totalQty);
+                    if (newQty + item.bonusQty + totalQtyForProduct <= item.product.stok) {
+                      item.qty = newQty;
+                    }
+                  }
+                });
+              },
+              (newBonusQty) {
+                setState(() {
+                  if (newBonusQty < 0) return;
+                  if (item.qty == 0 && newBonusQty == 0) {
+                    _cart.removeAt(idx);
+                  } else {
+                    int totalQtyForProduct = _cart
+                        .where((c) => c.product.id == item.product.id && c != item)
+                        .fold(0, (sum, c) => sum + c.totalQty);
+                    if (item.qty + newBonusQty + totalQtyForProduct <= item.product.stok) {
+                      item.bonusQty = newBonusQty;
+                    }
                   }
                 });
               },
@@ -293,10 +328,12 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
     String name,
     double unitPrice,
     int qty,
+    int bonusQty,
     ValueChanged<int> onQtyChanged,
+    ValueChanged<int> onBonusQtyChanged,
   ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
@@ -309,28 +346,37 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
         ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 48,
             height: 48,
+            margin: const EdgeInsets.only(top: 4),
             decoration: BoxDecoration(
               color: AppColors.surfaceContainerLow,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: AppColors.primary),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.onSurface,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.onSurface,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 Text(
                   'Unit: Rp ${unitPrice.toInt()}',
@@ -339,76 +385,145 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
                     color: AppColors.onSurfaceVariant,
                   ),
                 ),
-              ],
-            ),
-          ),
-          // Quantity stepper
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(100),
-            ),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    if (qty > 0) onQtyChanged(qty - 1);
-                  },
-                  child: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: Center(
-                      child: Text(
-                        '-',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Qty Reguler',
+                          style: TextStyle(fontSize: 10, color: AppColors.onSurfaceVariant, fontWeight: FontWeight.bold),
                         ),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 24,
-                  child: Center(
-                    child: Text(
-                      '$qty',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => onQtyChanged(qty + 1),
-                  child: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: Center(
-                      child: Text(
-                        '+',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
+                        const SizedBox(height: 4),
+                        // Quantity stepper
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  if (qty > 0) onQtyChanged(qty - 1);
+                                },
+                                behavior: HitTestBehavior.opaque,
+                                child: SizedBox(
+                                  width: 32,
+                                  height: 32,
+                                  child: Center(
+                                    child: Text(
+                                      '-',
+                                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 24,
+                                child: Center(
+                                  child: Text(
+                                    '$qty',
+                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => onQtyChanged(qty + 1),
+                                behavior: HitTestBehavior.opaque,
+                                child: SizedBox(
+                                  width: 32,
+                                  height: 32,
+                                  child: Center(
+                                    child: Text(
+                                      '+',
+                                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.card_giftcard, size: 10, color: AppColors.primary),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Qty Bonus',
+                              style: TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        // Bonus stepper
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryContainer.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              GestureDetector(
+                                onTap: () => onBonusQtyChanged(bonusQty - 1),
+                                behavior: HitTestBehavior.opaque,
+                                child: SizedBox(
+                                  width: 32,
+                                  height: 32,
+                                  child: Center(
+                                    child: Text('-', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 20)),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 24,
+                                child: Center(
+                                  child: Text('$bonusQty', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => onBonusQtyChanged(bonusQty + 1),
+                                behavior: HitTestBehavior.opaque,
+                                child: SizedBox(
+                                  width: 32,
+                                  height: 32,
+                                  child: Center(
+                                    child: Text('+', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 20)),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    'Rp ${(unitPrice * qty).toInt()}',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.primary,
                     ),
                   ),
                 ),
               ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            'Rp ${(unitPrice * qty).toInt()}',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primary,
             ),
           ),
         ],
@@ -627,10 +742,7 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
                   icon: const Icon(Icons.payments, size: 20),
                   label: Text(
                     'Process Payment',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),

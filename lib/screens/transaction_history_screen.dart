@@ -3,6 +3,7 @@ import '../theme/app_colors.dart';
 import '../widgets/top_app_bar.dart';
 import '../models/transaction_model.dart';
 import '../repositories/transaction_repository.dart';
+import 'receipt_preview_screen.dart';
 
 class TransactionHistoryScreen extends StatefulWidget {
   const TransactionHistoryScreen({super.key});
@@ -72,6 +73,30 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
         );
       }
     }
+  }
+
+  Future<void> _showTransactionDetails(TransactionModel t) async {
+    final items = await _repo.getOrderItems(t.receiptId);
+    
+    if (!mounted) return;
+    
+    String method = 'CASH/QRIS';
+    if (t.status == 'Bon · Belum Lunas') {
+        method = 'BON';
+    } else if (t.status == 'Void') {
+        method = 'VOID';
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ReceiptPreviewScreen(
+          transaction: t,
+          items: items,
+          method: method,
+        ),
+      ),
+    );
   }
 
   Map<String, List<TransactionModel>> get _groupedTransactions {
@@ -275,6 +300,16 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton.icon(
+              onPressed: () => _showTransactionDetails(t),
+              icon: Icon(Icons.receipt_long, size: 16, color: AppColors.primary),
+              label: Text('Lihat Detail Pesanan', style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.bold)),
+            ),
           ),
         ],
       ),

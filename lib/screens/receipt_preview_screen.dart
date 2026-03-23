@@ -2,8 +2,21 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../widgets/top_app_bar.dart';
 
+import '../models/transaction_model.dart';
+import '../models/order_item_model.dart';
+
 class ReceiptPreviewScreen extends StatelessWidget {
-  const ReceiptPreviewScreen({super.key});
+  final TransactionModel transaction;
+  final List<OrderItemModel> items;
+  final String method;
+
+  const ReceiptPreviewScreen({
+    super.key,
+    required this.transaction,
+    required this.items,
+    required this.method,
+  });
+
 
   @override
   Widget build(BuildContext context) {
@@ -196,7 +209,7 @@ class ReceiptPreviewScreen extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            'INV/20231027/001',
+            transaction.receiptId,
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -204,7 +217,7 @@ class ReceiptPreviewScreen extends StatelessWidget {
             ),
           ),
           Text(
-            '27 OCT 2023 14:20',
+            transaction.tanggal.length >= 16 ? transaction.tanggal.substring(0, 16).replaceFirst('T', ' ') : transaction.tanggal,
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -220,13 +233,12 @@ class ReceiptPreviewScreen extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(32),
       child: Column(
-        children: [
-          _buildReceiptItem('2x Kopi Susu Gula Aren', 'Extra Shot, Less Ice', '60.000'),
-          const SizedBox(height: 16),
-          _buildReceiptItem('1x Almond Croissant', 'Original Butter', '35.000'),
-          const SizedBox(height: 16),
-          _buildReceiptItem('1x Earl Grey Tea', 'Hot', '28.000'),
-        ],
+        children: items.map((item) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: _buildReceiptItem('${item.qty}x Item ${item.productId}', '', 'Rp ${item.subtotal.toInt()}'),
+          );
+        }).toList(),
       ),
     );
   }
@@ -272,16 +284,17 @@ class ReceiptPreviewScreen extends StatelessWidget {
   }
 
   Widget _buildTotalsSection() {
+    double subtotal = items.fold(0.0, (sum, item) => sum + item.subtotal);
+    double tax = subtotal * 0.08;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(32, 16, 32, 32),
       color: AppColors.surfaceContainerLow.withValues(alpha: 0.5),
       child: Column(
         children: [
-          _buildTotalRow('Subtotal', '123.000'),
+          _buildTotalRow('Subtotal', 'Rp ${subtotal.toInt()}'),
           const SizedBox(height: 8),
-          _buildTotalRow('Tax (10%)', '12.300'),
-          const SizedBox(height: 8),
-          _buildTotalRow('Service (5%)', '6.150'),
+          _buildTotalRow('Tax (8%)', 'Rp ${tax.toInt()}'),
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -300,9 +313,9 @@ class ReceiptPreviewScreen extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '141.450',
+                    'Rp ${transaction.totalHarga.toInt()}',
                     style: TextStyle(
-                      fontSize: 28,
+                      fontSize: 24,
                       fontWeight: FontWeight.w900,
                       color: AppColors.primary,
                       letterSpacing: -1.5,
@@ -328,7 +341,7 @@ class ReceiptPreviewScreen extends StatelessWidget {
                       Icon(Icons.check_circle, size: 14, color: AppColors.secondary),
                       const SizedBox(width: 4),
                       Text(
-                        'QRIS PAID',
+                        method.toUpperCase(),
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
