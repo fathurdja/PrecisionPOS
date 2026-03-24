@@ -270,6 +270,23 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                       color: AppColors.outline,
                     ),
                   ),
+                  if (t.customerName != null && t.customerName!.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.person, size: 14, color: AppColors.onSurfaceVariant),
+                        const SizedBox(width: 4),
+                        Text(
+                          t.customerName!,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
               _buildStatusBadge(t.status, statusBg, statusDot, statusText),

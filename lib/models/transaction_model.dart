@@ -3,12 +3,14 @@ class TransactionModel {
   final String tanggal;
   final double totalHarga;
   final String status;
+  final String? customerName;
 
   TransactionModel({
     required this.receiptId,
     required this.tanggal,
     required this.totalHarga,
     required this.status,
+    this.customerName,
   });
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
@@ -17,6 +19,7 @@ class TransactionModel {
       tanggal: json['tanggal'],
       totalHarga: (json['total_harga'] as num).toDouble(),
       status: json['status'],
+      customerName: json['customer_name'],
     );
   }
 
@@ -26,6 +29,7 @@ class TransactionModel {
       'tanggal': tanggal,
       'total_harga': totalHarga,
       'status': status,
+      if (customerName != null) 'customer_name': customerName,
     };
   }
 

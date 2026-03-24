@@ -48,7 +48,8 @@ class DatabaseHelper {
         receipt_id TEXT PRIMARY KEY,
         tanggal $textType,
         total_harga $realType,
-        status $textType
+        status $textType,
+        customer_name TEXT
       )
     ''');
 

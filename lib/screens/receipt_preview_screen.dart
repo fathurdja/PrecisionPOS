@@ -6,6 +6,7 @@ import '../models/transaction_model.dart';
 import '../models/order_item_model.dart';
 import '../services/pdf_receipt_service.dart';
 import '../services/whatsapp_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ReceiptPreviewScreen extends StatelessWidget {
   final TransactionModel transaction;
@@ -145,71 +146,93 @@ class ReceiptPreviewScreen extends StatelessWidget {
   }
 
   Widget _buildReceiptHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(32, 32, 32, 24),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: AppColors.outlineVariant.withValues(alpha: 0.3),
-            width: 1,
-            // dashed styling approximated
-          ),
-        ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: AppColors.primaryContainer,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(
-              Icons.coffee,
-              color: Colors.white,
-              size: 30,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'PRECISION BREW',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.5,
-              color: AppColors.primary,
+    return FutureBuilder<SharedPreferences>(
+      future: SharedPreferences.getInstance(),
+      builder: (context, snapshot) {
+        String storeName = 'PRECISION BREW';
+        String storeAddress = 'Jl. Senopati No. 42, Jakarta Selatan';
+        String storePhone = 'Tel: +62 21 555 0123';
+        
+        if (snapshot.hasData) {
+           final prefs = snapshot.data!;
+           final savedName = prefs.getString('store_name');
+           final savedAddress = prefs.getString('store_address');
+           final savedPhone = prefs.getString('store_phone');
+           
+           if (savedName != null && savedName.isNotEmpty) storeName = savedName;
+           if (savedAddress != null && savedAddress.isNotEmpty) storeAddress = savedAddress;
+           if (savedPhone != null && savedPhone.isNotEmpty) storePhone = savedPhone;
+        }
+
+        return Container(
+          padding: const EdgeInsets.fromLTRB(32, 32, 32, 24),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: AppColors.outlineVariant.withValues(alpha: 0.3),
+                width: 1,
+              ),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            'ATELIER & ROASTERY',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: AppColors.outline,
-              letterSpacing: 2,
-            ),
+          child: Column(
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryContainer,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.coffee,
+                  color: Colors.white,
+                  size: 30,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                storeName.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                  color: AppColors.primary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'ATELIER & ROASTERY',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.outline,
+                  letterSpacing: 2,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                storeAddress,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              Text(
+                storePhone,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Jl. Senopati No. 42, Jakarta Selatan',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: AppColors.onSurfaceVariant,
-            ),
-          ),
-          Text(
-            'Tel: +62 21 555 0123',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: AppColors.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
+        );
+      }
     );
   }
 

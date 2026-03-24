@@ -34,6 +34,8 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
 
   String _receiptNumber = '';
   String _issueDate = '';
+  
+  final _customerNameController = TextEditingController();
 
   ProductModel? _selectedProduct;
 
@@ -44,12 +46,19 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
     _loadProducts();
   }
 
+  @override
+  void dispose() {
+    _customerNameController.dispose();
+    super.dispose();
+  }
+
   void _initOrder() {
     setState(() {
       _receiptNumber = Helpers.generateReceiptNumber();
       _issueDate = Helpers.getCurrentTimestamp();
       _cart.clear();
       _selectedProduct = null;
+      _customerNameController.clear();
     });
   }
 
@@ -72,6 +81,9 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
       tanggal: _issueDate,
       totalHarga: total,
       status: 'Pending',
+      customerName: _customerNameController.text.trim().isNotEmpty 
+          ? _customerNameController.text.trim() 
+          : null,
     );
 
     final items = _cart
@@ -125,7 +137,9 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildReceiptMeta(),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
+                  _buildCustomerInput(),
+                  const SizedBox(height: 24),
                   _buildOrderSection(),
                   const SizedBox(height: 32),
                   _buildBentoMetrics(),
@@ -136,6 +150,41 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
         ],
       ),
       bottomSheet: _buildCheckoutPanel(),
+    );
+  }
+
+  Widget _buildCustomerInput() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'CUSTOMER INFO',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: AppColors.primary,
+            letterSpacing: 1,
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _customerNameController,
+          decoration: InputDecoration(
+            labelText: 'Customer Name (Optional)',
+            prefixIcon: const Icon(Icons.person_outline),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+            ),
+            filled: true,
+            fillColor: AppColors.surfaceContainerLowest,
+          ),
+        ),
+      ],
     );
   }
 
@@ -575,10 +624,10 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.loyalty, color: AppColors.secondaryFixed, size: 24),
+                Icon(Icons.shopping_bag_outlined, color: Colors.white.withValues(alpha: 0.8), size: 24),
                 const SizedBox(height: 8),
                 Text(
-                  'LOYALTY POINTS',
+                  'TOTAL ITEMS',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
@@ -588,7 +637,7 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '+14 pts',
+                  '${_cart.fold(0, (sum, item) => sum + item.totalQty)} Items',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,

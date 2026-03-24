@@ -1,9 +1,80 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../widgets/top_app_bar.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  Future<void> _showStoreInfoDialog() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    final nameController = TextEditingController(text: prefs.getString('store_name') ?? '');
+    final addressController = TextEditingController(text: prefs.getString('store_address') ?? '');
+    final phoneController = TextEditingController(text: prefs.getString('store_phone') ?? '');
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Store Information'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Store Name'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: addressController,
+                  decoration: const InputDecoration(labelText: 'Store Address'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: phoneController,
+                  decoration: const InputDecoration(labelText: 'Phone Number', prefixText: '+62 '),
+                  keyboardType: TextInputType.phone,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                await prefs.setString('store_name', nameController.text);
+                await prefs.setString('store_address', addressController.text);
+                String phone = phoneController.text;
+                if (!phone.startsWith('+62') && phone.isNotEmpty) {
+                    phone = '+62 \$phone'; // auto format if missing
+                }
+                await prefs.setString('store_phone', phone);
+                if (mounted) Navigator.pop(ctx);
+                if (mounted) {
+                   ScaffoldMessenger.of(context).showSnackBar(
+                     const SnackBar(content: Text('Store information saved successfully!'), backgroundColor: AppColors.primary),
+                   );
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,21 +99,21 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 32),
                 _buildSettingsGroup('Account', [
-                  _SettingsItem(Icons.person_outline, 'Profile', 'Manage your account details'),
-                  _SettingsItem(Icons.store, 'Store Information', 'Business name, address, tax ID'),
-                  _SettingsItem(Icons.group_outlined, 'Staff Management', 'Add or remove team members'),
+                  _SettingsItem(Icons.person_outline, 'Profile', 'Manage your account details', null),
+                  _SettingsItem(Icons.store, 'Store Information', 'Business name, address, tax ID', _showStoreInfoDialog),
+                  _SettingsItem(Icons.group_outlined, 'Staff Management', 'Add or remove team members', null),
                 ]),
                 const SizedBox(height: 24),
                 _buildSettingsGroup('Preferences', [
-                  _SettingsItem(Icons.receipt_long, 'Receipt Template', 'Customize receipt layout'),
-                  _SettingsItem(Icons.percent, 'Tax & Service', 'Configure tax rates'),
-                  _SettingsItem(Icons.notifications_outlined, 'Notifications', 'Alert preferences'),
+                  _SettingsItem(Icons.receipt_long, 'Receipt Template', 'Customize receipt layout', null),
+                  _SettingsItem(Icons.percent, 'Tax & Service', 'Configure tax rates', null),
+                  _SettingsItem(Icons.notifications_outlined, 'Notifications', 'Alert preferences', null),
                 ]),
                 const SizedBox(height: 24),
                 _buildSettingsGroup('System', [
-                  _SettingsItem(Icons.sync, 'Data Sync', 'Cloud & backup settings'),
-                  _SettingsItem(Icons.print_outlined, 'Printer Setup', 'Connect receipt printers'),
-                  _SettingsItem(Icons.info_outline, 'About', 'Version & legal information'),
+                  _SettingsItem(Icons.sync, 'Data Sync', 'Cloud & backup settings', null),
+                  _SettingsItem(Icons.print_outlined, 'Printer Setup', 'Connect receipt printers', null),
+                  _SettingsItem(Icons.info_outline, 'About', 'Version & legal information', null),
                 ]),
                 const SizedBox(height: 100),
               ],
@@ -79,6 +150,7 @@ class SettingsScreen extends StatelessWidget {
               return Column(
                 children: [
                   ListTile(
+                    onTap: item.onTap,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                     leading: Container(
                       width: 40,
@@ -131,6 +203,8 @@ class _SettingsItem {
   final IconData icon;
   final String title;
   final String subtitle;
+  final VoidCallback? onTap;
 
-  _SettingsItem(this.icon, this.title, this.subtitle);
+  _SettingsItem(this.icon, this.title, this.subtitle, this.onTap);
 }
+
