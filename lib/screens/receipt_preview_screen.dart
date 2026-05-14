@@ -7,6 +7,7 @@ import '../models/order_item_model.dart';
 import '../services/pdf_receipt_service.dart';
 import '../services/whatsapp_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/currency_format.dart';
 
 class ReceiptPreviewScreen extends StatelessWidget {
   final TransactionModel transaction;
@@ -278,7 +279,7 @@ class ReceiptPreviewScreen extends StatelessWidget {
         children: items.map((item) {
           return Padding(
             padding: const EdgeInsets.only(bottom: 16),
-            child: _buildReceiptItem('${item.qty}x Item ${item.productId}', '', 'Rp ${item.subtotal.toInt()}'),
+            child: _buildReceiptItem('${item.qty}x Item ${item.productId}', '', CurrencyFormat.idr(item.subtotal)),
           );
         }).toList(),
       ),
@@ -334,9 +335,9 @@ class ReceiptPreviewScreen extends StatelessWidget {
       color: AppColors.surfaceContainerLow.withValues(alpha: 0.5),
       child: Column(
         children: [
-          _buildTotalRow('Subtotal', 'Rp ${subtotal.toInt()}'),
+          _buildTotalRow('Subtotal', CurrencyFormat.idr(subtotal)),
           const SizedBox(height: 8),
-          _buildTotalRow('Tax (8%)', 'Rp ${tax.toInt()}'),
+          _buildTotalRow('Tax (8%)', CurrencyFormat.idr(tax)),
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -355,7 +356,7 @@ class ReceiptPreviewScreen extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'Rp ${transaction.totalHarga.toInt()}',
+                    CurrencyFormat.idr(transaction.totalHarga),
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w900,

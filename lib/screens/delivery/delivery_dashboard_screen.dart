@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../services/api_config.dart';
+import '../../utils/currency_format.dart';
 
 class DeliveryDashboardScreen extends StatefulWidget {
   const DeliveryDashboardScreen({super.key});
@@ -88,9 +89,9 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Rp 0', // TODO: wire to actual revenue
-            style: TextStyle(
+          Text(
+            CurrencyFormat.idr(0), // TODO: wire to actual revenue
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 32,
               fontWeight: FontWeight.w900,

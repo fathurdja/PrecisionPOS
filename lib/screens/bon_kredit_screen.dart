@@ -4,6 +4,7 @@ import '../models/transaction_model.dart';
 import '../models/order_item_model.dart';
 import '../repositories/transaction_repository.dart';
 import 'payment_success_screen.dart';
+import '../utils/currency_format.dart';
 
 class BonKreditScreen extends StatefulWidget {
   final TransactionModel transaction;
@@ -233,7 +234,7 @@ class _BonKreditScreenState extends State<BonKreditScreen> {
             ),
           ),
           Text(
-            'Rp ${widget.transaction.totalHarga.toInt()}',
+            CurrencyFormat.idr(widget.transaction.totalHarga),
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w900,

@@ -26,8 +26,8 @@ void main() async {
   }
   print("======================");
 
-  final token = await ApiConfig.getToken();
-  final initialRoute = token != null ? '/home' : '/login';
+  // Bypassed login temporarily for development testing
+  final initialRoute = '/home';
 
   runApp(PrecisionPOSApp(initialRoute: initialRoute));
 }

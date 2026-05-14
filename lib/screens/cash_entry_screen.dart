@@ -4,6 +4,7 @@ import '../models/transaction_model.dart';
 import '../models/order_item_model.dart';
 import '../repositories/transaction_repository.dart';
 import 'payment_success_screen.dart';
+import '../utils/currency_format.dart';
 
 class CashEntryScreen extends StatefulWidget {
   final TransactionModel transaction;
@@ -180,7 +181,7 @@ class _CashEntryScreenState extends State<CashEntryScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Rp ${widget.transaction.totalHarga.toInt()}',
+            CurrencyFormat.idr(widget.transaction.totalHarga),
             style: const TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.w900,
@@ -328,7 +329,7 @@ class _CashEntryScreenState extends State<CashEntryScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Rp ${change.toInt()}',
+                CurrencyFormat.idr(change),
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w900,

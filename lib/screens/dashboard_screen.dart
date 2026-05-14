@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../theme/app_colors.dart';
 import '../widgets/top_app_bar.dart';
 import '../repositories/transaction_repository.dart';
+import '../utils/currency_format.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onNewOrder;
@@ -42,7 +43,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   String _formatCurrency(double amount) {
-    final format = NumberFormat.currency(locale: 'en_US', symbol: '\$');
+    final format = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     return format.format(amount);
   }
 

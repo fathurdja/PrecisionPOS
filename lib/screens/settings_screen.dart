@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../widgets/top_app_bar.dart';
+import '../services/bluetooth_printer_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -76,6 +77,99 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _showPrinterSetupDialog() async {
+    try {
+      final printerService = BluetoothPrinterService();
+      bool isEnabled = await printerService.isBluetoothEnabled;
+      if (!isEnabled) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tolong nyalakan Bluetooth terlebih dahulu.')));
+        }
+        return;
+      }
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (ctx) {
+          return AlertDialog(
+            title: const Text('Pilih Printer Bluetooth'),
+            content: FutureBuilder(
+              future: printerService.getPairedDevices(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()));
+                }
+                if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                  return Text('Tidak ada perangkat Bluetooth ter-pairing ditemukan. Error: \${snapshot.error ?? "Kosong"}');
+                }
+                final devices = snapshot.data!;
+                return SizedBox(
+                  width: double.maxFinite,
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: devices.length,
+                    itemBuilder: (context, index) {
+                      final device = devices[index];
+                      return ListTile(
+                        leading: const Icon(Icons.print),
+                        title: Text(device.name),
+                        subtitle: Text(device.macAdress),
+                        onTap: () async {
+                          Navigator.pop(ctx);
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.setString('printer_mac', device.macAdress);
+                          await prefs.setString('printer_name', device.name);
+                          
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text('Printer disetel ke ${device.name}. Mencoba koneksi...'),
+                            ));
+                          }
+                          
+                          try {
+                            bool connected = await printerService.connect(device.macAdress);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: Text(connected ? 'Berhasil terhubung ke ${device.name}!' : 'Gagal terhubung.'),
+                                backgroundColor: connected ? AppColors.secondary : Colors.red,
+                              ));
+                            }
+                          } catch (e) {
+                             if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Koneksi Error: \$e')));
+                             }
+                          }
+                        },
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Tutup'),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: \$e\\n\\nTip: Hentikan aplikasi (Stop) lalu jalankan ulang (Run) karena kita baru saja menginstal library Bluetooth.'),
+            duration: const Duration(seconds: 5),
+            backgroundColor: Colors.red,
+          )
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -112,7 +206,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 24),
                 _buildSettingsGroup('System', [
                   _SettingsItem(Icons.sync, 'Data Sync', 'Cloud & backup settings', null),
-                  _SettingsItem(Icons.print_outlined, 'Printer Setup', 'Connect receipt printers', null),
+                  _SettingsItem(Icons.print_outlined, 'Printer Setup', 'Connect receipt printers', _showPrinterSetupDialog),
                   _SettingsItem(Icons.info_outline, 'About', 'Version & legal information', null),
                 ]),
                 const SizedBox(height: 100),

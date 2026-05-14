@@ -5,6 +5,7 @@ import '../models/transaction_model.dart';
 import '../models/order_item_model.dart';
 import '../repositories/transaction_repository.dart';
 import 'payment_success_screen.dart';
+import '../utils/currency_format.dart';
 
 class QrisScreen extends StatefulWidget {
   final TransactionModel transaction;
@@ -90,7 +91,7 @@ class _QrisScreenState extends State<QrisScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Rp ${widget.transaction.totalHarga.toInt()}',
+                CurrencyFormat.idr(widget.transaction.totalHarga),
                 style: const TextStyle(
                   fontSize: 36,
                   fontWeight: FontWeight.w900,

@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../models/transaction_model.dart';
 import '../models/order_item_model.dart';
 import '../data/database_helper.dart';
+import '../utils/currency_format.dart';
 
 class PdfReceiptService {
   Future<pw.Document> generateReceipt(TransactionModel transaction, List<OrderItemModel> items) async {
@@ -25,7 +26,7 @@ class PdfReceiptService {
       });
     }
 
-    final formatCurrency = NumberFormat.currency(locale: 'en_US', symbol: '\$');
+    final formatCurrency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
     pdf.addPage(
       pw.Page(

@@ -7,6 +7,7 @@ import '../models/order_item_model.dart';
 import '../repositories/product_repository.dart';
 import '../utils/helpers.dart';
 import 'payment_method_screen.dart';
+import '../utils/currency_format.dart';
 
 class CartItem {
   final ProductModel product;
@@ -563,7 +564,7 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: Text(
-                    'Rp ${(unitPrice * qty).toInt()}',
+                    CurrencyFormat.idr((unitPrice * qty)),
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
@@ -718,7 +719,7 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
                     ),
                   ),
                   Text(
-                    'Rp ${subtotal.toInt()}',
+                    CurrencyFormat.idr(subtotal),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -740,7 +741,7 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
                     ),
                   ),
                   Text(
-                    'Rp ${tax.toInt()}',
+                    CurrencyFormat.idr(tax),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -763,7 +764,7 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
                     ),
                   ),
                   Text(
-                    'Rp ${total.toInt()}',
+                    CurrencyFormat.idr(total),
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w900,

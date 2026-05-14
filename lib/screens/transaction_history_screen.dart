@@ -4,6 +4,7 @@ import '../widgets/top_app_bar.dart';
 import '../models/transaction_model.dart';
 import '../repositories/transaction_repository.dart';
 import 'receipt_preview_screen.dart';
+import '../utils/currency_format.dart';
 
 class TransactionHistoryScreen extends StatefulWidget {
   const TransactionHistoryScreen({super.key});
@@ -310,7 +311,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
               else
                  const SizedBox(),
               Text(
-                'Rp ${t.totalHarga.toInt()}',
+                CurrencyFormat.idr(t.totalHarga),
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,

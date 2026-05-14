@@ -6,6 +6,7 @@ import '../widgets/top_app_bar.dart';
 import '../repositories/transaction_repository.dart';
 import '../services/data_export_service.dart';
 import '../services/data_import_service.dart';
+import '../utils/currency_format.dart';
 
 class DailyReportScreen extends StatefulWidget {
   const DailyReportScreen({super.key});
@@ -77,7 +78,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
   }
 
   String _formatCurrency(double amount) {
-    final format = NumberFormat.currency(locale: 'en_US', symbol: '\$');
+    final format = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     return format.format(amount);
   }
 

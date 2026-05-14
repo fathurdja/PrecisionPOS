@@ -4,6 +4,8 @@ import '../models/transaction_model.dart';
 import '../models/order_item_model.dart';
 import '../services/pdf_receipt_service.dart';
 import '../services/whatsapp_service.dart';
+import '../services/bluetooth_printer_service.dart';
+import '../utils/currency_format.dart';
 
 class PaymentSuccessScreen extends StatelessWidget {
   final TransactionModel transaction;
@@ -139,7 +141,7 @@ class PaymentSuccessScreen extends StatelessWidget {
                 Expanded(
                   child: Text('${item.qty}x Item ${item.productId}'),
                 ),
-                Text('Rp ${item.subtotal.toInt()}'),
+                Text(CurrencyFormat.idr(item.subtotal)),
               ],
             ),
           )),
@@ -152,7 +154,7 @@ class PaymentSuccessScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('Total Tagihan', style: TextStyle(fontWeight: FontWeight.bold)),
-              Text('Rp ${transaction.totalHarga.toInt()}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primary)),
+              Text(CurrencyFormat.idr(transaction.totalHarga), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primary)),
             ],
           ),
           
@@ -163,7 +165,7 @@ class PaymentSuccessScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Cash Diterima', style: TextStyle(color: AppColors.outline)),
-                  Text('Rp ${receivedAmount!.toInt()}'),
+                  Text(CurrencyFormat.idr(receivedAmount!)),
                 ],
               ),
               const SizedBox(height: 4),
@@ -171,7 +173,7 @@ class PaymentSuccessScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Kembalian', style: TextStyle(color: AppColors.secondary, fontWeight: FontWeight.bold)),
-                  Text('Rp ${changeAmount!.toInt()}', style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.bold)),
+                  Text(CurrencyFormat.idr(changeAmount!), style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.bold)),
                 ],
               ),
             ],
@@ -251,10 +253,17 @@ class PaymentSuccessScreen extends StatelessWidget {
           child: OutlinedButton.icon(
             onPressed: () async {
               try {
-                await PdfReceiptService().printReceipt(transaction, items);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mencetak struk via Bluetooth...')));
+                }
+                await BluetoothPrinterService().printReceipt(transaction, items);
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to print: \$e')));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('Gagal mencetak: \$e'),
+                    backgroundColor: Colors.red,
+                    duration: const Duration(seconds: 4),
+                  ));
                 }
               }
             },
@@ -264,8 +273,8 @@ class PaymentSuccessScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            icon: const Icon(Icons.print),
-            label: const Text('Print / PDF'),
+            icon: const Icon(Icons.bluetooth),
+            label: const Text('Cetak Struk'),
           ),
         ),
       ],

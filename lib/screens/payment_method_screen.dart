@@ -5,6 +5,7 @@ import '../models/order_item_model.dart';
 import 'cash_entry_screen.dart';
 import 'bon_kredit_screen.dart';
 import 'qris_screen.dart';
+import '../utils/currency_format.dart';
 
 class PaymentMethodScreen extends StatefulWidget {
   final TransactionModel transaction;
@@ -198,7 +199,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
                     style: const TextStyle(fontWeight: FontWeight.w500),
                   ),
                 ),
-                Text('Rp ${item.subtotal.toInt()}'),
+                Text(CurrencyFormat.idr(item.subtotal)),
               ],
             ),
           )),
@@ -215,7 +216,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('Subtotal', style: TextStyle(color: AppColors.onSurfaceVariant)),
-              Text('Rp ${subtotal.toInt()}', style: const TextStyle(color: AppColors.onSurfaceVariant)),
+              Text(CurrencyFormat.idr(subtotal), style: const TextStyle(color: AppColors.onSurfaceVariant)),
             ],
           ),
           const SizedBox(height: 8),
@@ -223,7 +224,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('Tax (8%)', style: TextStyle(color: AppColors.onSurfaceVariant)),
-              Text('Rp ${tax.toInt()}', style: const TextStyle(color: AppColors.onSurfaceVariant)),
+              Text(CurrencyFormat.idr(tax), style: const TextStyle(color: AppColors.onSurfaceVariant)),
             ],
           ),
           const SizedBox(height: 16),
@@ -235,7 +236,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
               ),
               Text(
-                'Rp ${widget.transaction.totalHarga.toInt()}',
+                CurrencyFormat.idr(widget.transaction.totalHarga),
                 style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.primary, letterSpacing: -0.5),
               ),
             ],
