@@ -7,7 +7,6 @@ import 'screens/daily_report_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/delivery/delivery_dashboard_screen.dart';
-import 'services/api_config.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -26,8 +25,10 @@ void main() async {
   }
   print("======================");
 
-  // Bypassed login temporarily for development testing
-  final initialRoute = '/home';
+  // Check if user is already logged in
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('auth_token');
+  final initialRoute = (token != null && token.isNotEmpty) ? '/home' : '/login';
 
   runApp(PrecisionPOSApp(initialRoute: initialRoute));
 }
@@ -64,6 +65,7 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
   String _userRole = '';
+  bool _isRoleLoaded = false;
 
   @override
   void initState() {
@@ -73,18 +75,28 @@ class _MainShellState extends State<MainShell> {
 
   Future<void> _loadUserRole() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _userRole = prefs.getString('user_role') ?? '';
-    });
+    if (mounted) {
+      setState(() {
+        _userRole = prefs.getString('user_role') ?? 'admin';
+        _isRoleLoaded = true;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_isRoleLoaded) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF9F9FE),
       body: _buildBody(),
       bottomNavigationBar: AppBottomNavBar(
         currentIndex: _currentIndex,
+        userRole: _userRole,
         onTap: (index) {
           setState(() {
             _currentIndex = index;
@@ -94,22 +106,33 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
+  /// Maps the current tab index to the correct screen based on the
+  /// user's role. Uses [AppBottomNavBar.getTabsForRole] to get the
+  /// ordered list of tab keys, then resolves each key to a widget.
   Widget _buildBody() {
-    switch (_currentIndex) {
-      case 0:
-        if (_userRole == 'delivery') {
-          return const DeliveryDashboardScreen();
-        }
+    final tabs = AppBottomNavBar.getTabsForRole(_userRole);
+    final safeIndex = _currentIndex.clamp(0, tabs.length - 1);
+    final activeKey = tabs[safeIndex].key;
+
+    switch (activeKey) {
+      case 'sales':
         return DashboardScreen(
           onNewOrder: () => Navigator.pushNamed(context, '/order'),
         );
-      case 1:
+      case 'order':
+        return const OrderInputScreen();
+      case 'history':
         return const TransactionHistoryScreen();
-      case 2:
+      case 'reports':
         return const DailyReportScreen();
-      case 3:
-      default:
+      case 'settings':
         return const SettingsScreen();
+      case 'delivery':
+        return const DeliveryDashboardScreen();
+      default:
+        return DashboardScreen(
+          onNewOrder: () => Navigator.pushNamed(context, '/order'),
+        );
     }
   }
 }

@@ -17,42 +17,67 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9F9FE),
-      appBar: AppBar(
-        title: const Text('Delivery Dashboard', style: TextStyle(color: Color(0xFF313647), fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: AppColors.error),
-            onPressed: () async {
-              await ApiConfig.clearAuth();
-              if (mounted) Navigator.pushReplacementNamed(context, '/login');
-            },
-          )
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Your Shift Performance',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF313647),
-              ),
+    return Column(
+      children: [
+        // Custom top bar for delivery (since there's no bottom nav for single-tab role)
+        Container(
+          color: const Color(0xFFF9F9FE),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: SafeArea(
+            bottom: false,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.delivery_dining, color: AppColors.primary, size: 28),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Delivery Dashboard',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                        color: Color(0xFF313647),
+                      ),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  icon: const Icon(Icons.logout, color: AppColors.error),
+                  tooltip: 'Logout',
+                  onPressed: () async {
+                    await ApiConfig.clearAuth();
+                    if (mounted) Navigator.pushReplacementNamed(context, '/login');
+                  },
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            _buildRevenueCard(),
-            const SizedBox(height: 24),
-            _buildActionButtons(),
-          ],
+          ),
         ),
-      ),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Your Shift Performance',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF313647),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildRevenueCard(),
+                const SizedBox(height: 24),
+                _buildActionButtons(),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 

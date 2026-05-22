@@ -133,7 +133,7 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
           const AppTopBar(),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 200),
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 280),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

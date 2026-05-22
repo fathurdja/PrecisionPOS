@@ -6,6 +6,7 @@ import '../widgets/top_app_bar.dart';
 import '../repositories/transaction_repository.dart';
 import '../services/data_export_service.dart';
 import '../services/data_import_service.dart';
+import '../services/pdf_report_service.dart';
 import '../utils/currency_format.dart';
 
 class DailyReportScreen extends StatefulWidget {
@@ -25,7 +26,10 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
   List<double> _hourlyBuckets = List.filled(7, 0.0);
   double _maxHourlySales = 100.0;
   List<Map<String, dynamic>> _recentTransactions = [];
-  DateTime _selectedDate = DateTime.now();
+  DateTime _startDate = DateTime.now();
+  DateTime _endDate = DateTime.now();
+  String _selectedPeriod = 'Hari Ini';
+  final List<String> _periods = ['Hari Ini', 'Bulan Ini', 'Tahun Ini', 'Semua Waktu', 'Kustom'];
 
   @override
   void initState() {
@@ -36,12 +40,25 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     
-    // Convert selected date to string for repository methods
-    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-    final summary = await _repo.getSummaryByDate(dateStr);
-    final itemsSold = await _repo.getTotalItemsSoldByDate(dateStr);
-    final hourly = await _repo.getHourlyPerformanceByDate(dateStr);
-    final recent = await _repo.getTransactionsByDateWithItems(dateStr, limit: 5);
+    final startStr = DateFormat('yyyy-MM-dd').format(_startDate);
+    final endStr = DateFormat('yyyy-MM-dd').format(_endDate);
+    
+    final effectiveStart = _selectedPeriod == 'Semua Waktu' ? '2000-01-01' : startStr;
+    final effectiveEnd = _selectedPeriod == 'Semua Waktu' ? '2100-01-01' : endStr;
+
+    final summary = await _repo.getSummaryByDateRange(effectiveStart, effectiveEnd);
+    final itemsSold = await _repo.getTotalItemsSoldByDateRange(effectiveStart, effectiveEnd);
+    
+    List<Map<String, dynamic>> hourly = [];
+    if (startStr == endStr && _selectedPeriod != 'Semua Waktu') {
+      hourly = await _repo.getHourlyPerformanceByDate(startStr);
+    }
+    
+    final recent = await _repo.getTransactionsByDateRangeWithItems(
+      _selectedPeriod == 'Semua Waktu' ? null : startStr, 
+      _selectedPeriod == 'Semua Waktu' ? null : endStr, 
+      limit: 100
+    );
     
     if (mounted) {
       setState(() {
@@ -100,8 +117,10 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                 const SizedBox(height: 24),
                 _buildSummaryCards(),
                 const SizedBox(height: 24),
-                _buildHourlyPerformance(),
-                const SizedBox(height: 24),
+                if (_startDate.year == _endDate.year && _startDate.month == _endDate.month && _startDate.day == _endDate.day && _selectedPeriod != 'Semua Waktu') ...[
+                  _buildHourlyPerformance(),
+                  const SizedBox(height: 24),
+                ],
                 _buildRecentTransactions(),
                 const SizedBox(height: 24),
                 _buildManageData(),
@@ -161,7 +180,14 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
   }
 
   Widget _buildHeadline() {
-    bool isToday = DateFormat('yyyy-MM-dd').format(_selectedDate) == DateFormat('yyyy-MM-dd').format(DateTime.now());
+    String dateRangeText = '';
+    if (_selectedPeriod == 'Semua Waktu') {
+      dateRangeText = 'Semua Waktu';
+    } else if (_startDate.year == _endDate.year && _startDate.month == _endDate.month && _startDate.day == _endDate.day) {
+      dateRangeText = DateFormat('dd MMM yyyy').format(_startDate);
+    } else {
+      dateRangeText = '${DateFormat('dd MMM').format(_startDate)} - ${DateFormat('dd MMM yyyy').format(_endDate)}';
+    }
     
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -170,7 +196,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              isToday ? 'Daily Report' : 'Past Report',
+              'Sales Report',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w800,
@@ -178,83 +204,97 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                 letterSpacing: -0.5,
               ),
             ),
-            const SizedBox(height: 4),
-            InkWell(
-              onTap: () async {
-                final DateTime? picked = await showDatePicker(
-                  context: context,
-                  initialDate: _selectedDate,
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime.now(),
-                  builder: (context, child) {
-                    return Theme(
-                      data: Theme.of(context).copyWith(
-                        colorScheme: const ColorScheme.light(
-                          primary: AppColors.primary,
-                          onPrimary: Colors.white,
-                          onSurface: AppColors.onSurface,
-                        ),
-                      ),
-                      child: child!,
-                    );
-                  },
-                );
-                if (picked != null && picked != _selectedDate) {
-                  setState(() {
-                    _selectedDate = picked;
-                  });
-                  _loadData();
-                }
-              },
-              borderRadius: BorderRadius.circular(4),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.calendar_month, size: 16, color: AppColors.onSurfaceVariant),
-                    const SizedBox(width: 6),
-                    Text(
-                      DateFormat('EEEE, MMM d, yyyy').format(_selectedDate),
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.onSurfaceVariant,
-                      ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButton<String>(
+                    value: _selectedPeriod,
+                    icon: Icon(Icons.arrow_drop_down, color: AppColors.primary),
+                    underline: const SizedBox(),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
                     ),
-                    const SizedBox(width: 4),
-                    Icon(Icons.arrow_drop_down, size: 16, color: AppColors.onSurfaceVariant),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            IconButton(
-              icon: Icon(Icons.chevron_left, color: AppColors.primary),
-              onPressed: () {
-                setState(() {
-                  _selectedDate = _selectedDate.subtract(const Duration(days: 1));
-                });
-                _loadData();
-              },
-              style: IconButton.styleFrom(
-                backgroundColor: AppColors.surfaceContainerHigh,
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: Icon(Icons.chevron_right, color: isToday ? AppColors.outlineVariant : AppColors.primary),
-              onPressed: isToday ? null : () {
-                setState(() {
-                  _selectedDate = _selectedDate.add(const Duration(days: 1));
-                });
-                _loadData();
-              },
-              style: IconButton.styleFrom(
-                backgroundColor: AppColors.surfaceContainerHigh,
+                    items: _periods.map((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) async {
+                      if (newValue != null) {
+                        setState(() {
+                          _selectedPeriod = newValue;
+                          final now = DateTime.now();
+                          if (newValue == 'Hari Ini') {
+                            _startDate = now;
+                            _endDate = now;
+                          } else if (newValue == 'Bulan Ini') {
+                            _startDate = DateTime(now.year, now.month, 1);
+                            _endDate = now;
+                          } else if (newValue == 'Tahun Ini') {
+                            _startDate = DateTime(now.year, 1, 1);
+                            _endDate = now;
+                          }
+                        });
+                        
+                        if (newValue == 'Kustom') {
+                          final DateTimeRange? picked = await showDateRangePicker(
+                            context: context,
+                            initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now(),
+                            builder: (context, child) {
+                              return Theme(
+                                data: Theme.of(context).copyWith(
+                                  colorScheme: const ColorScheme.light(
+                                    primary: AppColors.primary,
+                                    onPrimary: Colors.white,
+                                    onSurface: AppColors.onSurface,
+                                  ),
+                                ),
+                                child: child!,
+                              );
+                            },
+                          );
+                          if (picked != null) {
+                            setState(() {
+                              _startDate = picked.start;
+                              _endDate = picked.end;
+                            });
+                            _loadData();
+                          } else {
+                            setState(() {
+                              _selectedPeriod = 'Hari Ini';
+                              _startDate = DateTime.now();
+                              _endDate = DateTime.now();
+                            });
+                            _loadData();
+                          }
+                        } else {
+                          _loadData();
+                        }
+                      }
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    dateRangeText,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -760,6 +800,29 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
+              onPressed: _showPdfCustomizationDialog,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.secondaryFixed,
+                foregroundColor: AppColors.onSecondaryFixed,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.picture_as_pdf, size: 16),
+              label: Text(
+                'Download Report as PDF',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
               onPressed: () async {
                 try {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -769,15 +832,17 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                 } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Export failed: \$e')),
+                      SnackBar(content: Text('Export failed: $e')),
                     );
                   }
                 }
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.secondaryFixed,
-                foregroundColor: AppColors.onSecondaryFixed,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
+                side: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.2),
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -808,7 +873,7 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                 } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Import failed: \$e')),
+                      SnackBar(content: Text('Import failed: $e')),
                     );
                   }
                 }
@@ -835,6 +900,87 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showPdfCustomizationDialog() {
+    final titleController = TextEditingController(text: 'Laporan Penjualan Kopi Senja');
+    final notesController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppColors.surfaceContainerLowest,
+          title: Text('Kustomisasi PDF', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: InputDecoration(
+                  labelText: 'Judul Laporan',
+                  labelStyle: TextStyle(color: AppColors.onSurfaceVariant),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.outlineVariant)),
+                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.primary)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: notesController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: 'Catatan Tambahan',
+                  labelStyle: TextStyle(color: AppColors.onSurfaceVariant),
+                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.outlineVariant)),
+                  focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: AppColors.primary)),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Batal', style: TextStyle(color: AppColors.onSurfaceVariant)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                
+                final startStr = DateFormat('yyyy-MM-dd').format(_startDate);
+                final endStr = DateFormat('yyyy-MM-dd').format(_endDate);
+                
+                final effectiveStart = _selectedPeriod == 'Semua Waktu' ? '2000-01-01' : startStr;
+                final effectiveEnd = _selectedPeriod == 'Semua Waktu' ? '2100-01-01' : endStr;
+
+                // Fetch all transactions for the selected range for the PDF
+                final allTxns = await _repo.getTransactionsByDateRangeWithItems(
+                  effectiveStart, effectiveEnd,
+                  limit: 1000 // A reasonably large number to get all for the report
+                );
+
+                await PdfReportService().exportAndPrintDailyReport(
+                  startDate: _startDate,
+                  endDate: _endDate,
+                  title: titleController.text,
+                  notes: notesController.text,
+                  summary: {
+                    'total_sales': _todaySales,
+                    'total_orders': (_todaySales > 0 && _avgTicket > 0) ? (_todaySales / _avgTicket).round() : 0,
+                    'items_sold': _itemsSold,
+                  },
+                  transactions: allTxns,
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Buat PDF'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

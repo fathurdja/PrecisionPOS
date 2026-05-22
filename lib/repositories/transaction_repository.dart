@@ -98,6 +98,10 @@ class TransactionRepository {
   }
 
   Future<Map<String, dynamic>> getSummaryByDate(String dateStr) async {
+    return getSummaryByDateRange(dateStr, dateStr);
+  }
+
+  Future<Map<String, dynamic>> getSummaryByDateRange(String startDateStr, String endDateStr) async {
     final db = await DatabaseHelper.instance.database;
 
     final result = await db.rawQuery('''
@@ -105,8 +109,8 @@ class TransactionRepository {
         COUNT(*) as total_orders,
         SUM(total_harga) as total_sales
       FROM transactions
-      WHERE date(tanggal) = ? AND status != 'Void'
-    ''', [dateStr]);
+      WHERE date(tanggal) >= ? AND date(tanggal) <= ? AND status != 'Void'
+    ''', [startDateStr, endDateStr]);
 
     if (result.isNotEmpty) {
       return {
@@ -123,14 +127,18 @@ class TransactionRepository {
   }
 
   Future<int> getTotalItemsSoldByDate(String dateStr) async {
+    return getTotalItemsSoldByDateRange(dateStr, dateStr);
+  }
+
+  Future<int> getTotalItemsSoldByDateRange(String startDateStr, String endDateStr) async {
     final db = await DatabaseHelper.instance.database;
 
     final result = await db.rawQuery('''
       SELECT SUM(oi.qty) as total_items
       FROM order_items oi
       JOIN transactions t ON oi.receipt_id = t.receipt_id
-      WHERE date(t.tanggal) = ? AND t.status != 'Void'
-    ''', [dateStr]);
+      WHERE date(t.tanggal) >= ? AND date(t.tanggal) <= ? AND t.status != 'Void'
+    ''', [startDateStr, endDateStr]);
     
     if (result.isNotEmpty) {
       return (result.first['total_items'] as int?) ?? 0;
@@ -163,15 +171,20 @@ class TransactionRepository {
     return getTransactionsByDateWithItems(null, limit: limit);
   }
 
-  Future<List<Map<String, dynamic>>> getTransactionsByDateWithItems(String? dateString, {int limit = 5}) async {
+  Future<List<Map<String, dynamic>>> getTransactionsByDateWithItems(String? dateString, {int? limit}) async {
+    return getTransactionsByDateRangeWithItems(dateString, dateString, limit: limit);
+  }
+
+  Future<List<Map<String, dynamic>>> getTransactionsByDateRangeWithItems(String? startDateStr, String? endDateStr, {int? limit}) async {
     final db = await DatabaseHelper.instance.database;
     
     String whereClause = 'status != ?';
     List<dynamic> whereArgs = ['Void'];
     
-    if (dateString != null) {
-      whereClause += ' AND date(tanggal) = ?';
-      whereArgs.add(dateString);
+    if (startDateStr != null && endDateStr != null) {
+      whereClause += ' AND date(tanggal) >= ? AND date(tanggal) <= ?';
+      whereArgs.add(startDateStr);
+      whereArgs.add(endDateStr);
     }
     
     final txns = await db.query(
