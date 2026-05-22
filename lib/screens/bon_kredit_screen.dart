@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../models/transaction_model.dart';
 import '../models/order_item_model.dart';
 import '../repositories/transaction_repository.dart';
+import '../data/database_helper.dart';
 import 'payment_success_screen.dart';
 import '../utils/currency_format.dart';
 
@@ -75,17 +77,42 @@ class _BonKreditScreenState extends State<BonKreditScreen> {
   Future<void> _saveInvoice() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Load active cashier name
+    final prefs = await SharedPreferences.getInstance();
+    final cashierName = prefs.getString('user_name');
+
     final repo = TransactionRepository();
     
-    // Create new transaction with updated status for credit
+    // Create new transaction with updated status and metadata
     final bonTxn = TransactionModel(
       receiptId: widget.transaction.receiptId,
       tanggal: widget.transaction.tanggal,
       totalHarga: widget.transaction.totalHarga,
       status: 'Bon · Belum Lunas',
+      customerName: _nameController.text.trim().isNotEmpty 
+          ? _nameController.text.trim() 
+          : widget.transaction.customerName,
+      taxAmount: widget.transaction.taxAmount,
+      serviceAmount: widget.transaction.serviceAmount,
+      cashierName: cashierName,
     );
 
     await repo.saveTransaction(bonTxn, widget.items);
+
+    // Update staff last_active
+    if (cashierName != null) {
+      try {
+        final db = await DatabaseHelper.instance.database;
+        await db.update(
+          'staff',
+          {'last_active': DateTime.now().toIso8601String()},
+          where: 'name = ?',
+          whereArgs: [cashierName],
+        );
+      } catch (e) {
+        print("Failed to update staff last_active: $e");
+      }
+    }
 
     if (mounted) {
       Navigator.push(

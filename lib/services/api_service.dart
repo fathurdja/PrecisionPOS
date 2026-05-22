@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_config.dart';
+import '../data/database_helper.dart';
 
 class ApiService {
   // 1. Authentication (Mobile App)
@@ -38,11 +39,31 @@ class ApiService {
     if (ApiConfig.useMockApi) {
       await Future.delayed(const Duration(seconds: 1)); // Simulate network delay
 
-      // Find matching mock user by username/email AND password
-      final match = _mockUsers.cast<Map<String, dynamic>?>().firstWhere(
-        (u) => u!['username'] == email.trim().toLowerCase() && u['password'] == password,
-        orElse: () => null,
+      final db = await DatabaseHelper.instance.database;
+      final staffMaps = await db.query(
+        'staff',
+        where: 'email = ? AND password = ?',
+        whereArgs: [email.trim().toLowerCase(), password],
       );
+
+      Map<String, dynamic>? match;
+      if (staffMaps.isNotEmpty) {
+        final staff = staffMaps.first;
+        match = {
+          'token': 'mock_token_${staff['email']}_${staff['id']}',
+          'user': {'id': staff['id'], 'name': staff['name'], 'role': staff['role']},
+          'tenant': {'id': 1, 'name': 'Kopi Senja'},
+        };
+      } else {
+        // Find matching mock user by username/email AND password
+        final staticMatch = _mockUsers.cast<Map<String, dynamic>?>().firstWhere(
+          (u) => u!['username'] == email.trim().toLowerCase() && u['password'] == password,
+          orElse: () => null,
+        );
+        if (staticMatch != null) {
+          match = staticMatch;
+        }
+      }
 
       if (match == null) {
         return {'success': false, 'message': 'Username atau password salah'};
@@ -59,6 +80,15 @@ class ApiService {
       await prefs.setString('user_role', (mockData['user'] as Map)['role']);
       await prefs.setString('user_name', (mockData['user'] as Map)['name']);
       await prefs.setString('store_name', (mockData['tenant'] as Map)['name']);
+
+      if (staffMaps.isNotEmpty) {
+        await db.update(
+          'staff',
+          {'last_active': DateTime.now().toIso8601String()},
+          where: 'id = ?',
+          whereArgs: [staffMaps.first['id']],
+        );
+      }
 
       return {'success': true, 'data': mockData};
     }
@@ -129,6 +159,19 @@ class ApiService {
   Future<Map<String, dynamic>> register(String name, String email, String password, String role) async {
     if (ApiConfig.useMockApi) {
       await Future.delayed(const Duration(seconds: 1));
+      try {
+        final db = await DatabaseHelper.instance.database;
+        await db.insert('staff', {
+          'name': name,
+          'email': email.trim().toLowerCase(),
+          'role': role,
+          'password': password,
+          'last_active': DateTime.now().toIso8601String(),
+          'revenue': 0.0,
+        });
+      } catch (e) {
+        print("Local staff insertion error during registration: $e");
+      }
       return {'success': true, 'data': {'message': 'Mock register success'}};
     }
     try {

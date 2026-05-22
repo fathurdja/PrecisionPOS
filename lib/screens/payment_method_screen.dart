@@ -160,7 +160,8 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     for (var item in widget.items) {
       subtotal += item.subtotal;
     }
-    double tax = subtotal * 0.08;
+    double serviceCharge = widget.transaction.serviceAmount;
+    double tax = widget.transaction.taxAmount;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -219,14 +220,26 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
               Text(CurrencyFormat.idr(subtotal), style: const TextStyle(color: AppColors.onSurfaceVariant)),
             ],
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Tax (8%)', style: TextStyle(color: AppColors.onSurfaceVariant)),
-              Text(CurrencyFormat.idr(tax), style: const TextStyle(color: AppColors.onSurfaceVariant)),
-            ],
-          ),
+          if (serviceCharge > 0) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Service Charge', style: TextStyle(color: AppColors.onSurfaceVariant)),
+                Text(CurrencyFormat.idr(serviceCharge), style: const TextStyle(color: AppColors.onSurfaceVariant)),
+              ],
+            ),
+          ],
+          if (tax > 0) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Tax', style: TextStyle(color: AppColors.onSurfaceVariant)),
+                Text(CurrencyFormat.idr(tax), style: const TextStyle(color: AppColors.onSurfaceVariant)),
+              ],
+            ),
+          ],
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

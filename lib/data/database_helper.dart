@@ -23,8 +23,9 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -49,7 +50,10 @@ class DatabaseHelper {
         tanggal $textType,
         total_harga $realType,
         status $textType,
-        customer_name TEXT
+        customer_name TEXT,
+        cashier_name TEXT,
+        tax_amount REAL DEFAULT 0.0,
+        service_amount REAL DEFAULT 0.0
       )
     ''');
 
@@ -65,7 +69,84 @@ class DatabaseHelper {
       )
     ''');
 
+    await db.execute('''
+      CREATE TABLE staff (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        role TEXT NOT NULL,
+        password TEXT,
+        last_active TEXT,
+        revenue REAL DEFAULT 0.0
+      )
+    ''');
+
     await _insertDummyProducts(db);
+    await _insertInitialStaff(db);
+  }
+
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      try {
+        await db.execute('ALTER TABLE transactions ADD COLUMN cashier_name TEXT');
+      } catch (e) {
+        print("Column cashier_name might already exist: $e");
+      }
+      try {
+        await db.execute('ALTER TABLE transactions ADD COLUMN tax_amount REAL DEFAULT 0.0');
+      } catch (e) {
+        print("Column tax_amount might already exist: $e");
+      }
+      try {
+        await db.execute('ALTER TABLE transactions ADD COLUMN service_amount REAL DEFAULT 0.0');
+      } catch (e) {
+        print("Column service_amount might already exist: $e");
+      }
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS staff (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          email TEXT NOT NULL UNIQUE,
+          role TEXT NOT NULL,
+          password TEXT,
+          last_active TEXT,
+          revenue REAL DEFAULT 0.0
+        )
+      ''');
+
+      await _insertInitialStaff(db);
+    }
+  }
+
+  Future _insertInitialStaff(Database db) async {
+    final result = await db.query('staff', where: 'email = ?', whereArgs: ['kasir']);
+    if (result.isEmpty) {
+      await db.insert('staff', {
+        'name': 'Budi Pemilik',
+        'email': 'admin',
+        'role': 'admin',
+        'password': 'admin123',
+        'last_active': DateTime.now().toIso8601String(),
+        'revenue': 0.0,
+      });
+      await db.insert('staff', {
+        'name': 'Ani Kasir',
+        'email': 'kasir',
+        'role': 'kasir',
+        'password': 'kasir123',
+        'last_active': DateTime.now().toIso8601String(),
+        'revenue': 0.0,
+      });
+      await db.insert('staff', {
+        'name': 'Dedi Kurir',
+        'email': 'delivery',
+        'role': 'delivery',
+        'password': 'delivery123',
+        'last_active': DateTime.now().toIso8601String(),
+        'revenue': 0.0,
+      });
+    }
   }
 
   Future _insertDummyProducts(Database db) async {

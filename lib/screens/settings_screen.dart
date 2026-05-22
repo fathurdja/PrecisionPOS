@@ -3,6 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../widgets/top_app_bar.dart';
 import '../services/bluetooth_printer_service.dart';
+import 'settings/tax_service_setting.dart';
+import 'settings/receipt_template_setting.dart';
+import 'settings/staff_management_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -59,7 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 await prefs.setString('store_address', addressController.text);
                 String phone = phoneController.text;
                 if (!phone.startsWith('+62') && phone.isNotEmpty) {
-                    phone = '+62 \$phone'; // auto format if missing
+                    phone = '+62 $phone'; // auto format if missing
                 }
                 await prefs.setString('store_phone', phone);
                 if (mounted) Navigator.pop(ctx);
@@ -102,7 +105,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()));
                 }
                 if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Text('Tidak ada perangkat Bluetooth ter-pairing ditemukan. Error: \${snapshot.error ?? "Kosong"}');
+                  return Text('Tidak ada perangkat Bluetooth ter-pairing ditemukan. Error: ${snapshot.error ?? "Kosong"}');
                 }
                 final devices = snapshot.data!;
                 return SizedBox(
@@ -138,7 +141,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             }
                           } catch (e) {
                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Koneksi Error: \$e')));
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Koneksi Error: $e')));
                              }
                           }
                         },
@@ -161,7 +164,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: \$e\\n\\nTip: Hentikan aplikasi (Stop) lalu jalankan ulang (Run) karena kita baru saja menginstal library Bluetooth.'),
+            content: Text('Error: $e\n\nTip: Hentikan aplikasi (Stop) lalu jalankan ulang (Run) karena kita baru saja menginstal library Bluetooth.'),
             duration: const Duration(seconds: 5),
             backgroundColor: Colors.red,
           )
@@ -182,7 +185,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 24),
-                Text(
+                const Text(
                   'Settings',
                   style: TextStyle(
                     fontSize: 24,
@@ -195,12 +198,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _buildSettingsGroup('Account', [
                   _SettingsItem(Icons.person_outline, 'Profile', 'Manage your account details', null),
                   _SettingsItem(Icons.store, 'Store Information', 'Business name, address, tax ID', _showStoreInfoDialog),
-                  _SettingsItem(Icons.group_outlined, 'Staff Management', 'Add or remove team members', null),
+                  _SettingsItem(Icons.group_outlined, 'Staff Management', 'Add or remove team members', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const StaffManagementScreen()),
+                    );
+                  }),
                 ]),
                 const SizedBox(height: 24),
                 _buildSettingsGroup('Preferences', [
-                  _SettingsItem(Icons.receipt_long, 'Receipt Template', 'Customize receipt layout', null),
-                  _SettingsItem(Icons.percent, 'Tax & Service', 'Configure tax rates', null),
+                  _SettingsItem(Icons.receipt_long, 'Receipt Template', 'Customize receipt layout', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ReceiptTemplateSettingScreen()),
+                    );
+                  }),
+                  _SettingsItem(Icons.percent, 'Tax & Service', 'Configure tax rates', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const TaxServiceSettingScreen()),
+                    );
+                  }),
                   _SettingsItem(Icons.notifications_outlined, 'Notifications', 'Alert preferences', null),
                 ]),
                 const SizedBox(height: 24),

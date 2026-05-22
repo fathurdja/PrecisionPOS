@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../models/transaction_model.dart';
 import '../models/order_item_model.dart';
 import '../repositories/transaction_repository.dart';
+import '../data/database_helper.dart';
 import 'payment_success_screen.dart';
 import '../utils/currency_format.dart';
 
@@ -49,18 +51,41 @@ class _CashEntryScreenState extends State<CashEntryScreen> {
   Future<void> _confirmPayment() async {
     if (_receivedAmount < widget.transaction.totalHarga) return;
 
+    // Load active cashier name
+    final prefs = await SharedPreferences.getInstance();
+    final cashierName = prefs.getString('user_name');
+
     // Save transaction
     final repo = TransactionRepository();
     
-    // Create new transaction with updated status
+    // Create new transaction with updated status and metadata
     final completedTxn = TransactionModel(
       receiptId: widget.transaction.receiptId,
       tanggal: widget.transaction.tanggal,
       totalHarga: widget.transaction.totalHarga,
       status: 'Completed',
+      customerName: widget.transaction.customerName,
+      taxAmount: widget.transaction.taxAmount,
+      serviceAmount: widget.transaction.serviceAmount,
+      cashierName: cashierName,
     );
 
     await repo.saveTransaction(completedTxn, widget.items);
+
+    // Update staff last_active
+    if (cashierName != null) {
+      try {
+        final db = await DatabaseHelper.instance.database;
+        await db.update(
+          'staff',
+          {'last_active': DateTime.now().toIso8601String()},
+          where: 'name = ?',
+          whereArgs: [cashierName],
+        );
+      } catch (e) {
+        print("Failed to update staff last_active: $e");
+      }
+    }
 
     if (mounted) {
       Navigator.push(

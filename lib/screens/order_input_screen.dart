@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../widgets/top_app_bar.dart';
 import '../models/product_model.dart';
@@ -40,11 +41,23 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
 
   ProductModel? _selectedProduct;
 
+  double _taxRate = 8.0;
+  double _serviceRate = 0.0;
+
   @override
   void initState() {
     super.initState();
     _initOrder();
     _loadProducts();
+    _loadTaxServiceSettings();
+  }
+
+  Future<void> _loadTaxServiceSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _taxRate = prefs.getDouble('tax_rate') ?? 8.0;
+      _serviceRate = prefs.getDouble('service_rate') ?? 0.0;
+    });
   }
 
   @override
@@ -71,8 +84,9 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
   }
 
   double get subtotal => _cart.fold(0.0, (sum, item) => sum + item.subtotal);
-  double get tax => subtotal * 0.08;
-  double get total => subtotal + tax;
+  double get serviceCharge => subtotal * (_serviceRate / 100);
+  double get tax => (subtotal + serviceCharge) * (_taxRate / 100);
+  double get total => subtotal + serviceCharge + tax;
 
   void _processPayment() {
     if (_cart.isEmpty) return;
@@ -85,6 +99,8 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
       customerName: _customerNameController.text.trim().isNotEmpty 
           ? _customerNameController.text.trim() 
           : null,
+      taxAmount: tax,
+      serviceAmount: serviceCharge,
     );
 
     final items = _cart
@@ -120,6 +136,7 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
       if (mounted) {
         _initOrder();
         _loadProducts();
+        _loadTaxServiceSettings();
       }
     });
   }
@@ -275,7 +292,6 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
         ),
         const SizedBox(height: 16),
 
-        // Product Dropdown
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
@@ -446,7 +462,6 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
                           style: TextStyle(fontSize: 10, color: AppColors.onSurfaceVariant, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
-                        // Quantity stepper
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                           decoration: BoxDecoration(
@@ -515,7 +530,6 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
                           ],
                         ),
                         const SizedBox(height: 4),
-                        // Bonus stepper
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                           decoration: BoxDecoration(
@@ -588,7 +602,6 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
         border: Border.all(
           color: AppColors.outlineVariant.withValues(alpha: 0.3),
           width: 2,
-          // Using Flutter's default dashed border simulation
         ),
       ),
       child: Column(
@@ -728,12 +741,36 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
                   ),
                 ],
               ),
+              if (_serviceRate > 0) ...[
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Service Charge (${_serviceRate.toStringAsFixed(_serviceRate % 1 == 0 ? 0 : 1)}%)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      CurrencyFormat.idr(serviceCharge),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Tax (8%)',
+                    'Tax (${_taxRate.toStringAsFixed(_taxRate % 1 == 0 ? 0 : 1)}%)',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -789,7 +826,7 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
                     elevation: 4,
                   ),
                   icon: const Icon(Icons.payments, size: 20),
-                  label: Text(
+                  label: const Text(
                     'Process Payment',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                   ),
