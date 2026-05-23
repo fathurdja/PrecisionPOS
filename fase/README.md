@@ -21,15 +21,17 @@
 
 Developed with the assistance of **AI Stitch** and **AntiGravity**, this project showcases rapid, high-quality full-stack development.
 
-## ✨ Key Features
+## ✨ Key Features & Recent Updates
 
+- 🤖 **AI-STICH Integration (NEW):** Integrated prediction engine for Sales Forecasting and Smart Inventory recommendations to predict retail needs.
+- 🏗️ **Robust Backend Architecture (NEW):** Designed for a Modular Monolith architecture, supporting modern tech stacks like Python (FastAPI), Node.js (NestJS), Golang, or PHP (Laravel).
 - 📱 **Beautiful & Responsive UI:** Crafted pixel-perfect from design specifications for an optimal user experience.
-- ⚡ **Offline-First Architecture:** Complete transaction capabilities using local database (`sqflite` / `isar`) even without internet connectivity.
-- 🔄 **Real-Time Synchronization:** Seamlessly syncs local transactions, products, and inventory with a Laravel API backend.
+- ⚡ **Offline-First Architecture:** Complete transaction capabilities using local database (`sqflite`) even without internet connectivity, utilizing smart batch Push/Pull synchronization.
+- 🔄 **Real-Time Synchronization:** Seamlessly syncs local transactions, products, and inventory with the backend API.
 - 📊 **Advanced Analytics & Reporting:** Real-time dashboard with sales summaries, hourly performance, and interactive traceback features.
-- 👥 **Role-Based Access Control:** Distinct roles including Admins, Cashiers, and Delivery Agents with tailored workflows.
-- 🖨️ **Smart Receipt Generation:** Auto-generates receipt numbers, timestamps, and calculates complex subtotal/grand total logic including bonus quantities.
-- 🚚 **Delivery Integration:** Built-in workflows for delivery tracking and agent assignments.
+- 👥 **Dynamic Role-Based Access Control (RBAC):** Distinct roles including Admins, Cashiers, Managers, and Delivery Drivers with tailored workflows and dynamic bottom navigation bars.
+- 🖨️ **Smart Receipt Generation:** Auto-generates receipt numbers, timestamps, and calculates complex subtotal/grand total logic.
+- 🚚 **Delivery Dashboard:** Built-in workflows and dedicated screens for delivery tracking and agent assignments.
 
 ## 📸 Screenshots
 
@@ -44,14 +46,14 @@ Developed with the assistance of **AI Stitch** and **AntiGravity**, this project
 ### Frontend (Mobile App)
 - **Framework:** [Flutter](https://flutter.dev/)
 - **Language:** Dart
-- **Local Database:** sqflite / Isar
-- **Architecture:** Repository Pattern
+- **Local Database:** sqflite / shared_preferences
+- **Architecture:** Repository Pattern with Clean Architecture principles
 
 ### Backend (API & Dashboard)
-- **Framework:** [Laravel](https://laravel.com/)
-- **Language:** PHP
-- **Database:** MySQL
-- **Admin Panel:** Filament PHP
+- **Primary Framework:** Python (FastAPI) *Recommended for AI integration*, or PHP (Laravel), Node.js (NestJS), Golang.
+- **Database:** PostgreSQL (Recommended for ACID) / MySQL
+- **Caching:** Redis (Session management & fast data retrieval)
+- **Architecture:** Modular Monolith
 
 ## 🚀 Getting Started
 
