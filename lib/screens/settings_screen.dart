@@ -6,6 +6,7 @@ import '../services/bluetooth_printer_service.dart';
 import 'settings/tax_service_setting.dart';
 import 'settings/receipt_template_setting.dart';
 import 'settings/staff_management_screen.dart';
+import 'settings/store_information_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -15,70 +16,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  Future<void> _showStoreInfoDialog() async {
-    final prefs = await SharedPreferences.getInstance();
-    
-    final nameController = TextEditingController(text: prefs.getString('store_name') ?? '');
-    final addressController = TextEditingController(text: prefs.getString('store_address') ?? '');
-    final phoneController = TextEditingController(text: prefs.getString('store_phone') ?? '');
 
-    if (!mounted) return;
-
-    await showDialog(
-      context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Text('Store Information'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Store Name'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: addressController,
-                  decoration: const InputDecoration(labelText: 'Store Address'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: phoneController,
-                  decoration: const InputDecoration(labelText: 'Phone Number', prefixText: '+62 '),
-                  keyboardType: TextInputType.phone,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                await prefs.setString('store_name', nameController.text);
-                await prefs.setString('store_address', addressController.text);
-                String phone = phoneController.text;
-                if (!phone.startsWith('+62') && phone.isNotEmpty) {
-                    phone = '+62 $phone'; // auto format if missing
-                }
-                await prefs.setString('store_phone', phone);
-                if (mounted) Navigator.pop(ctx);
-                if (mounted) {
-                   ScaffoldMessenger.of(context).showSnackBar(
-                     const SnackBar(content: Text('Store information saved successfully!'), backgroundColor: AppColors.primary),
-                   );
-                }
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   Future<void> _showPrinterSetupDialog() async {
     try {
@@ -197,7 +135,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 32),
                 _buildSettingsGroup('Account', [
                   _SettingsItem(Icons.person_outline, 'Profile', 'Manage your account details', null),
-                  _SettingsItem(Icons.store, 'Store Information', 'Business name, address, tax ID', _showStoreInfoDialog),
+                  _SettingsItem(Icons.store, 'Store Information', 'Business name, address, logo', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const StoreInformationScreen()),
+                    );
+                  }),
                   _SettingsItem(Icons.group_outlined, 'Staff Management', 'Add or remove team members', () {
                     Navigator.push(
                       context,

@@ -123,8 +123,8 @@ class _ReceiptPreviewScreenState extends State<ReceiptPreviewScreen> {
           child: ElevatedButton.icon(
             onPressed: () async {
               try {
-                final pdfFile = await PdfReceiptService().getPdfFile(widget.transaction, widget.items);
-                await WhatsAppService().sharePdfFile(pdfFile, text: 'Receipt from ${_storeName} (${widget.transaction.receiptId})');
+                final pdfFile = await PdfReceiptService().getInvoiceF4File(widget.transaction, widget.items);
+                await WhatsAppService().sharePdfFile(pdfFile, text: 'Invoice dari ${_storeName} (${widget.transaction.receiptId})');
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to share: $e')));
@@ -151,7 +151,7 @@ class _ReceiptPreviewScreenState extends State<ReceiptPreviewScreen> {
           child: ElevatedButton.icon(
             onPressed: () async {
               try {
-                await PdfReceiptService().printReceipt(widget.transaction, widget.items);
+                await PdfReceiptService().printInvoiceF4(widget.transaction, widget.items);
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to export PDF: $e')));
@@ -169,7 +169,7 @@ class _ReceiptPreviewScreenState extends State<ReceiptPreviewScreen> {
             ),
             icon: const Icon(Icons.picture_as_pdf, size: 18),
             label: const Text(
-              'Export PDF',
+              'Export Invoice',
               style: TextStyle(fontWeight: FontWeight.w600),
             ),
           ),

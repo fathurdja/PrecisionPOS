@@ -48,6 +48,7 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
 
   double _taxRate = 8.0;
   double _serviceRate = 0.0;
+  bool _showCustomerForm = false;
 
   @override
   void initState() {
@@ -79,6 +80,7 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
       _cart.clear();
       _selectedProduct = null;
       _selectedCustomer = null;
+      _showCustomerForm = false;
       _customerNameController.clear();
       _customerPhoneController.clear();
     });
@@ -196,90 +198,143 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'CUSTOMER INFO',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: AppColors.primary,
-            letterSpacing: 1,
+        if (!_showCustomerForm) ...[
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                setState(() {
+                  _showCustomerForm = true;
+                });
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: BorderSide(color: AppColors.primary.withValues(alpha: 0.5)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.person_add_alt_1, size: 20),
+              label: const Text(
+                'Customer Baru',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        Autocomplete<CustomerModel>(
-          optionsBuilder: (TextEditingValue textEditingValue) async {
-            if (textEditingValue.text.length < 2) {
-              return const Iterable<CustomerModel>.empty();
-            }
-            return await _customerRepo.searchCustomers(textEditingValue.text);
-          },
-          displayStringForOption: (CustomerModel option) => '${option.name} (${option.phone})',
-          onSelected: (CustomerModel selection) {
-            setState(() {
-              _selectedCustomer = selection;
-              _customerNameController.text = selection.name;
-              _customerPhoneController.text = selection.phone;
-            });
-          },
-          fieldViewBuilder: (context, controller, focusNode, onEditingComplete) {
-            return TextField(
-              controller: controller,
-              focusNode: focusNode,
-              onEditingComplete: onEditingComplete,
-              decoration: InputDecoration(
-                labelText: 'Search Customer (Name or Phone)',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+        ] else ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'CUSTOMER INFO',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                  letterSpacing: 1,
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.outlineVariant.withValues(alpha: 0.3)),
-                ),
-                filled: true,
-                fillColor: AppColors.surfaceContainerLowest,
               ),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _customerNameController,
-                decoration: InputDecoration(
-                  labelText: 'Customer Name',
-                  prefixIcon: const Icon(Icons.person_outline),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+              TextButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _showCustomerForm = false;
+                    _selectedCustomer = null;
+                    _customerNameController.clear();
+                    _customerPhoneController.clear();
+                  });
+                },
+                icon: Icon(Icons.close, size: 16, color: AppColors.error),
+                label: Text(
+                  'Batal',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.error,
                   ),
                 ),
-                onChanged: (val) {
-                  _selectedCustomer = null;
-                },
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextField(
-                controller: _customerPhoneController,
-                keyboardType: TextInputType.phone,
+            ],
+          ),
+          const SizedBox(height: 12),
+          Autocomplete<CustomerModel>(
+            optionsBuilder: (TextEditingValue textEditingValue) async {
+              if (textEditingValue.text.length < 2) {
+                return const Iterable<CustomerModel>.empty();
+              }
+              return await _customerRepo.searchCustomers(textEditingValue.text);
+            },
+            displayStringForOption: (CustomerModel option) => '${option.name} (${option.phone})',
+            onSelected: (CustomerModel selection) {
+              setState(() {
+                _selectedCustomer = selection;
+                _customerNameController.text = selection.name;
+                _customerPhoneController.text = selection.phone;
+              });
+            },
+            fieldViewBuilder: (context, controller, focusNode, onEditingComplete) {
+              return TextField(
+                controller: controller,
+                focusNode: focusNode,
+                onEditingComplete: onEditingComplete,
                 decoration: InputDecoration(
-                  labelText: 'Phone Number',
-                  prefixIcon: const Icon(Icons.phone_outlined),
+                  labelText: 'Search Customer (Name or Phone)',
+                  prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
                   ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+                  ),
+                  filled: true,
+                  fillColor: AppColors.surfaceContainerLowest,
                 ),
-                onChanged: (val) {
-                  _selectedCustomer = null;
-                },
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _customerNameController,
+                  decoration: InputDecoration(
+                    labelText: 'Customer Name',
+                    prefixIcon: const Icon(Icons.person_outline),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onChanged: (val) {
+                    _selectedCustomer = null;
+                  },
+                ),
               ),
-            ),
-          ],
-        ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _customerPhoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Phone Number',
+                    prefixIcon: const Icon(Icons.phone_outlined),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onChanged: (val) {
+                    _selectedCustomer = null;
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
