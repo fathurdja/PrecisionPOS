@@ -23,7 +23,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -51,9 +51,19 @@ class DatabaseHelper {
         total_harga $realType,
         status $textType,
         customer_name TEXT,
+        customer_phone TEXT,
         cashier_name TEXT,
         tax_amount REAL DEFAULT 0.0,
         service_amount REAL DEFAULT 0.0
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE customers (
+        id $idType,
+        name $textType,
+        phone TEXT NOT NULL UNIQUE,
+        created_at TEXT
       )
     ''');
 
@@ -116,6 +126,22 @@ class DatabaseHelper {
       ''');
 
       await _insertInitialStaff(db);
+    }
+    if (oldVersion < 3) {
+      try {
+        await db.execute('ALTER TABLE transactions ADD COLUMN customer_phone TEXT');
+      } catch (e) {
+        print("Column customer_phone might already exist: $e");
+      }
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS customers (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          phone TEXT NOT NULL UNIQUE,
+          created_at TEXT
+        )
+      ''');
     }
   }
 

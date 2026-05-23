@@ -3,7 +3,9 @@ import 'package:intl/intl.dart';
 import '../theme/app_colors.dart';
 import '../widgets/top_app_bar.dart';
 import '../repositories/transaction_repository.dart';
-import '../utils/currency_format.dart';
+
+import 'inventory_screen.dart';
+import 'customer_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onNewOrder;
@@ -257,23 +259,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 16),
         Row(
           children: [
-            Expanded(child: _buildActionCard(Icons.inventory_2, 'Inventory', '854 Items Stocked')),
+            Expanded(child: _buildActionCard(Icons.inventory_2, 'Inventory', 'Stocked Items', () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const InventoryScreen()));
+            })),
             const SizedBox(width: 16),
-            Expanded(child: _buildActionCard(Icons.group, 'Customers', '2.4k Registered')),
+            Expanded(child: _buildActionCard(Icons.group, 'Customers', 'Registered Members', () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const CustomerScreen()));
+            })),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildActionCard(IconData icon, String title, String subtitle) {
-    return Container(
-      height: 128,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
-      ),
+  Widget _buildActionCard(IconData icon, String title, String subtitle, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 128,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(16),
+        ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -309,6 +317,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
         ],
+      ),
       ),
     );
   }

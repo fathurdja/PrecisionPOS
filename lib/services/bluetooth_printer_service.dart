@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import '../models/transaction_model.dart';
 import '../models/order_item_model.dart';
 import '../data/database_helper.dart';
-import '../utils/currency_format.dart';
 
 class BluetoothPrinterService {
   static final BluetoothPrinterService _instance = BluetoothPrinterService._internal();

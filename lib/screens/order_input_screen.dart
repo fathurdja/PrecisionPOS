@@ -5,7 +5,9 @@ import '../widgets/top_app_bar.dart';
 import '../models/product_model.dart';
 import '../models/transaction_model.dart';
 import '../models/order_item_model.dart';
+import '../models/customer_model.dart';
 import '../repositories/product_repository.dart';
+import '../repositories/customer_repository.dart';
 import '../utils/helpers.dart';
 import 'payment_method_screen.dart';
 import '../utils/currency_format.dart';
@@ -30,6 +32,7 @@ class OrderInputScreen extends StatefulWidget {
 
 class _OrderInputScreenState extends State<OrderInputScreen> {
   final ProductRepository _productRepo = ProductRepository();
+  final CustomerRepository _customerRepo = CustomerRepository();
 
   List<ProductModel> _availableProducts = [];
   List<CartItem> _cart = [];
@@ -38,8 +41,10 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
   String _issueDate = '';
   
   final _customerNameController = TextEditingController();
+  final _customerPhoneController = TextEditingController();
 
   ProductModel? _selectedProduct;
+  CustomerModel? _selectedCustomer;
 
   double _taxRate = 8.0;
   double _serviceRate = 0.0;
@@ -63,6 +68,7 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
   @override
   void dispose() {
     _customerNameController.dispose();
+    _customerPhoneController.dispose();
     super.dispose();
   }
 
@@ -72,7 +78,9 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
       _issueDate = Helpers.getCurrentTimestamp();
       _cart.clear();
       _selectedProduct = null;
+      _selectedCustomer = null;
       _customerNameController.clear();
+      _customerPhoneController.clear();
     });
   }
 
@@ -99,9 +107,22 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
       customerName: _customerNameController.text.trim().isNotEmpty 
           ? _customerNameController.text.trim() 
           : null,
+      customerPhone: _customerPhoneController.text.trim().isNotEmpty 
+          ? _customerPhoneController.text.trim() 
+          : null,
       taxAmount: tax,
       serviceAmount: serviceCharge,
     );
+
+    if (_customerNameController.text.trim().isNotEmpty && _customerPhoneController.text.trim().isNotEmpty) {
+      if (_selectedCustomer == null || _selectedCustomer!.phone != _customerPhoneController.text.trim()) {
+        _customerRepo.addCustomer(CustomerModel(
+          name: _customerNameController.text.trim(),
+          phone: _customerPhoneController.text.trim(),
+          createdAt: DateTime.now().toIso8601String(),
+        ));
+      }
+    }
 
     final items = _cart
         .expand((item) {
@@ -185,22 +206,79 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        TextField(
-          controller: _customerNameController,
-          decoration: InputDecoration(
-            labelText: 'Customer Name (Optional)',
-            prefixIcon: const Icon(Icons.person_outline),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+        Autocomplete<CustomerModel>(
+          optionsBuilder: (TextEditingValue textEditingValue) async {
+            if (textEditingValue.text.length < 2) {
+              return const Iterable<CustomerModel>.empty();
+            }
+            return await _customerRepo.searchCustomers(textEditingValue.text);
+          },
+          displayStringForOption: (CustomerModel option) => '${option.name} (${option.phone})',
+          onSelected: (CustomerModel selection) {
+            setState(() {
+              _selectedCustomer = selection;
+              _customerNameController.text = selection.name;
+              _customerPhoneController.text = selection.phone;
+            });
+          },
+          fieldViewBuilder: (context, controller, focusNode, onEditingComplete) {
+            return TextField(
+              controller: controller,
+              focusNode: focusNode,
+              onEditingComplete: onEditingComplete,
+              decoration: InputDecoration(
+                labelText: 'Search Customer (Name or Phone)',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+                ),
+                filled: true,
+                fillColor: AppColors.surfaceContainerLowest,
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _customerNameController,
+                decoration: InputDecoration(
+                  labelText: 'Customer Name',
+                  prefixIcon: const Icon(Icons.person_outline),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onChanged: (val) {
+                  _selectedCustomer = null;
+                },
+              ),
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: _customerPhoneController,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  labelText: 'Phone Number',
+                  prefixIcon: const Icon(Icons.phone_outlined),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onChanged: (val) {
+                  _selectedCustomer = null;
+                },
+              ),
             ),
-            filled: true,
-            fillColor: AppColors.surfaceContainerLowest,
-          ),
+          ],
         ),
       ],
     );
