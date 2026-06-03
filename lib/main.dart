@@ -9,26 +9,53 @@ import 'screens/auth/login_screen.dart';
 import 'screens/delivery/delivery_dashboard_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
+import 'package:get/get.dart';
+import 'package:firebase_core/firebase_core.dart';
 
+import 'routes/app_pages.dart';
+import 'routes/app_routes.dart';
 import 'data/database_helper.dart';
 import 'repositories/product_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await DatabaseHelper.instance.database;
-
-  // Baca dummy data via debug console
-  final products = await ProductRepository().getProducts();
-  print("=== DUMMY PRODUCTS ===");
-  for (var p in products) {
-    print("${p.id}: ${p.nama} - Rp${p.harga} (Stok: ${p.stok})");
+  
+  // Initialize Firebase (Requires flutterfire configure to be fully functional)
+  try {
+    if (!kIsWeb) {
+      await Firebase.initializeApp();
+    } else {
+      // Firebase Web requires options to initialize from Dart, which is handled after running `flutterfire configure`.
+      // We log it but do not throw to allow the web app to run.
+      debugPrint("Firebase Web: Please run `flutterfire configure` to set up FirebaseOptions.");
+    }
+  } catch (e) {
+    debugPrint("Firebase initialization failed or not configured yet: $e");
   }
-  print("======================");
+
+  if (!kIsWeb) {
+    await DatabaseHelper.instance.database;
+
+    // Baca dummy data via debug console
+    final products = await ProductRepository().getProducts();
+    print("=== DUMMY PRODUCTS ===");
+    for (var p in products) {
+      print("${p.id}: ${p.nama} - Rp${p.harga} (Stok: ${p.stok})");
+    }
+    print("======================");
+  }
 
   // Check if user is already logged in
   final prefs = await SharedPreferences.getInstance();
   final token = prefs.getString('auth_token');
-  final initialRoute = (token != null && token.isNotEmpty) ? '/home' : '/login';
+  
+  String initialRoute = (token != null && token.isNotEmpty) ? '/home' : '/login';
+
+  if (kIsWeb) {
+    // For web, use the GetX routes
+    initialRoute = (token != null && token.isNotEmpty) ? AppRoutes.dashboard : AppRoutes.login;
+  }
 
   runApp(PrecisionPOSApp(initialRoute: initialRoute));
 }
@@ -40,11 +67,12 @@ class PrecisionPOSApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return GetMaterialApp(
       title: 'Precision POS',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       initialRoute: initialRoute,
+      getPages: AppPages.routes,
       routes: {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const MainShell(),
