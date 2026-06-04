@@ -24,7 +24,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4, // Increment to 4 to trigger wipe
+      version: 5, // Increment to 5 to trigger wipe and remove dummy products
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -106,14 +106,13 @@ class DatabaseHelper {
       )
     ''');
 
-    await _insertDummyProducts(db);
     await _insertInitialStaff(db);
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 4) {
+    if (oldVersion < 5) {
       // User requested to wipe local data to migrate to new API
-      print("Migrating to V4 - dropping all tables to wipe old data.");
+      print("Migrating to V5 - dropping all tables to wipe old data.");
       await db.execute('DROP TABLE IF EXISTS order_items');
       await db.execute('DROP TABLE IF EXISTS transactions');
       await db.execute('DROP TABLE IF EXISTS products');

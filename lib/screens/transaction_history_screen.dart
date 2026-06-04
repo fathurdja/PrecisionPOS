@@ -249,47 +249,55 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'ID: ${t.receiptId}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.onSurfaceVariant,
-                      letterSpacing: 1,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'ID: ${t.receiptId}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.onSurfaceVariant,
+                        letterSpacing: 1,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    t.tanggal.length >= 16 ? t.tanggal.substring(11, 16).replaceFirst('T', ' ') : t.tanggal,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.outline,
+                    const SizedBox(height: 2),
+                    Text(
+                      t.tanggal.length >= 16 ? t.tanggal.substring(11, 16).replaceFirst('T', ' ') : t.tanggal,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.outline,
+                      ),
                     ),
-                  ),
-                  if (t.customerName != null && t.customerName!.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.person, size: 14, color: AppColors.onSurfaceVariant),
-                        const SizedBox(width: 4),
-                        Text(
-                          t.customerName!,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.onSurfaceVariant,
+                    if (t.customerName != null && t.customerName!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.person, size: 14, color: AppColors.onSurfaceVariant),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              t.customerName!,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
+              const SizedBox(width: 12),
               _buildStatusBadge(t.status, statusBg, statusDot, statusText),
             ],
           ),

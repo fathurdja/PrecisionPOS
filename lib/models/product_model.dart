@@ -25,7 +25,7 @@ class ProductModel {
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     return ProductModel(
-      id: json['id'] ?? json['id'].toString(), // in case it was int previously
+      id: json['id']?.toString() ?? '', // in case it was int previously
       name: json['name'] ?? json['nama'] ?? 'Unknown',
       categoryId: json['category_id'],
       description: json['description'],
@@ -33,7 +33,7 @@ class ProductModel {
       purchasePrice: json['purchase_price'] != null ? (json['purchase_price'] as num).toDouble() : null,
       price: ((json['price'] ?? json['harga'] ?? 0) as num).toDouble(),
       isActive: json['is_active'] == 1 || json['is_active'] == true,
-      stok: json['stok'] ?? 0,
+      stok: json['current_stock'] ?? json['stok'] ?? 0,
       variants: json['variants'],
     );
   }

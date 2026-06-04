@@ -171,4 +171,20 @@ class ApiService {
       return {'success': false, 'message': 'Network error: $e'};
     }
   }
+
+  Future<Map<String, dynamic>> getTransactions({int limit = 5}) async {
+    try {
+      final token = await ApiConfig.getToken();
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/transactions?limit=$limit'),
+        headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
+      );
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': jsonDecode(response.body)['data'] ?? []};
+      }
+      return {'success': false, 'message': 'Failed to load transactions'};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
 }

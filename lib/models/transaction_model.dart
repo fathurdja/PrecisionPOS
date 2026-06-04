@@ -105,7 +105,7 @@ class TransactionModel {
       'id': id,
       'receipt_number': receiptNumber,
       'tanggal': tanggal,
-      'total_harga': totalHarga,
+      'total_price': totalHarga,
       'status': status,
       'order_type': orderType,
       'payment_method': paymentMethod,

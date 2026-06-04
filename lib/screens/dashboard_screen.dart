@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../theme/app_colors.dart';
 import '../widgets/top_app_bar.dart';
 import '../repositories/transaction_repository.dart';
+import '../services/sync_service.dart';
 
 import 'inventory_screen.dart';
 import 'customer_screen.dart';
@@ -55,8 +56,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _totalOrders = summary['total_orders'] ?? 0;
     }
     
-    // Recent transactions generally come from local repo in POS for quick access
-    final recent = await _repo.getRecentTransactionsWithItems(limit: 5);
+    List<Map<String, dynamic>> recent = [];
+    
+    try {
+      final txResponse = await ApiService().getTransactions(limit: 5);
+      if (txResponse['success'] == true && txResponse['data'] != null) {
+        final List<dynamic> txList = txResponse['data'];
+        recent = txList.map((tx) {
+          return {
+            'transaction': tx,
+            'item_name': 'API Order',
+            'qty': 1,
+          };
+        }).toList();
+      } else {
+        final errorMsg = 'API getTransactions failed: ${txResponse['message']}';
+        print(errorMsg);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(errorMsg),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ));
+        }
+      }
+    } catch (e) {
+      final errorMsg = 'Exception in getTransactions: $e';
+      print(errorMsg);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(errorMsg),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ));
+      }
+      // Fallback to local if API fails
+    }
+
+    if (recent.isEmpty) {
+      recent = await _repo.getRecentTransactionsWithItems(limit: 5);
+    }
     
     if (mounted) {
       setState(() {
@@ -290,6 +329,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
             })),
           ],
         ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(child: _buildActionCard(Icons.sync, 'Sync Server', 'Upload & update data', () async {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Syncing data with server...'),
+                  duration: Duration(seconds: 2),
+                )
+              );
+              await SyncService().syncAll();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Sync completed!'),
+                    backgroundColor: Colors.green,
+                  )
+                );
+                _loadData(); // Reload dashboard data
+              }
+            })),
+          ],
+        ),
       ],
     );
   }
@@ -390,10 +452,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   : List.generate(_recentTransactions.length, (index) {
                       final txData = _recentTransactions[index];
                       final tx = txData['transaction'];
-                      final String status = tx['status'];
-                      final double amount = tx['total_harga'] ?? 0.0;
-                      final String timeStr = DateTime.parse(tx['tanggal']).toLocal().toString().substring(11, 16);
-                      final String receiptId = tx['receipt_id'].toString();
+                      final String status = tx['status'] ?? 'pending';
+                      final double amount = double.tryParse(tx['total_price']?.toString() ?? tx['total_harga']?.toString() ?? '0') ?? 0.0;
+                      
+                      String timeStr = '';
+                      final String rawDate = tx['created_at'] ?? tx['tanggal'] ?? '';
+                      if (rawDate.isNotEmpty) {
+                        try {
+                          timeStr = DateTime.parse(rawDate).toLocal().toString().substring(11, 16);
+                        } catch (e) {
+                          timeStr = rawDate;
+                        }
+                      }
+                      
+                      final String receiptId = tx['receipt_number']?.toString() ?? tx['receipt_id']?.toString() ?? tx['id']?.toString() ?? '';
                       
                       return _buildTransactionItem(
                         'Order #${receiptId.length > 4 ? receiptId.substring(receiptId.length - 4) : receiptId}', 
