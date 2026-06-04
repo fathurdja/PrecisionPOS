@@ -20,7 +20,7 @@ void main() {
       );
       
       file.writeAsStringSync(content);
-      print('Fixed ${file.path} with prefix ${prefix}');
+      print('Fixed ${file.path} with prefix $prefix');
     }
   }
 

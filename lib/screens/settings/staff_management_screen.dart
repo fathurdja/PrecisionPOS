@@ -642,7 +642,7 @@ class _AddStaffBottomSheetState extends State<_AddStaffBottomSheet> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _selectedRole,
+                initialValue: _selectedRole,
                 decoration: InputDecoration(
                   labelText: 'Role',
                   prefixIcon: const Icon(Icons.badge_outlined),

@@ -22,18 +22,18 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMessage = null;
     });
 
-    final email = _emailController.text.trim();
+    final username = _emailController.text.trim();
     final password = _passwordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
+    if (username.isEmpty || password.isEmpty) {
       setState(() {
          _isLoading = false;
-         _errorMessage = 'Email and Password are required';
+         _errorMessage = 'Username and Password are required';
       });
       return;
     }
 
-    final response = await _apiService.login(email, password);
+    final response = await _apiService.login(username, password);
 
     if (mounted) {
       setState(() {
@@ -104,10 +104,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 TextField(
                   controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
+                  keyboardType: TextInputType.text,
                   decoration: InputDecoration(
-                    labelText: 'Username / Email',
-                    prefixIcon: const Icon(Icons.email_outlined),
+                    labelText: 'Username',
+                    prefixIcon: const Icon(Icons.person_outline),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),

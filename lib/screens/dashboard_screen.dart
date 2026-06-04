@@ -7,6 +7,8 @@ import '../repositories/transaction_repository.dart';
 import 'inventory_screen.dart';
 import 'customer_screen.dart';
 
+import '../services/api_service.dart';
+
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onNewOrder;
 
@@ -31,13 +33,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    final summary = await _repo.getTodaySalesSummary();
+    
+    // First attempt to fetch from API
+    bool isOnline = false;
+    try {
+      final response = await ApiService().getAnalyticsSummary();
+      if (response['success'] == true) {
+        final data = response['data'];
+        _todaySales = (data['total_sales'] ?? 0.0).toDouble();
+        _totalOrders = (data['total_orders'] ?? 0).toInt();
+        isOnline = true;
+      }
+    } catch (e) {
+      // Ignore and fallback to local DB
+    }
+
+    if (!isOnline) {
+      // Fallback to local DB if offline or API fails
+      final summary = await _repo.getTodaySalesSummary();
+      _todaySales = summary['total_sales'] ?? 0.0;
+      _totalOrders = summary['total_orders'] ?? 0;
+    }
+    
+    // Recent transactions generally come from local repo in POS for quick access
     final recent = await _repo.getRecentTransactionsWithItems(limit: 5);
     
     if (mounted) {
       setState(() {
-        _todaySales = summary['total_sales'] ?? 0.0;
-        _totalOrders = summary['total_orders'] ?? 0;
         _recentTransactions = recent;
         _isLoading = false;
       });

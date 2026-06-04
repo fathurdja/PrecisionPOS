@@ -203,7 +203,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              ...txns.map((t) => _buildTransactionCard(t)).toList(),
+              ...txns.map((t) => _buildTransactionCard(t)),
             ],
           ),
         );

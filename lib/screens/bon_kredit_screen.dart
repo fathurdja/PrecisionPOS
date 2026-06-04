@@ -85,10 +85,13 @@ class _BonKreditScreenState extends State<BonKreditScreen> {
     
     // Create new transaction with updated status and metadata
     final bonTxn = TransactionModel(
-      receiptId: widget.transaction.receiptId,
+      id: widget.transaction.id,
+      receiptNumber: widget.transaction.receiptNumber,
       tanggal: widget.transaction.tanggal,
       totalHarga: widget.transaction.totalHarga,
       status: 'Bon · Belum Lunas',
+      orderType: widget.transaction.orderType,
+      paymentMethod: widget.transaction.paymentMethod,
       customerName: _nameController.text.trim().isNotEmpty 
           ? _nameController.text.trim() 
           : widget.transaction.customerName,

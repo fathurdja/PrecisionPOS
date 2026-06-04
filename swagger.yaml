@@ -1,0 +1,1486 @@
+openapi: 3.0.3
+info:
+  title: Dashboard Kasir POS - API
+  description: |
+    API untuk aplikasi POS (Point of Sale) mobile Flutter.
+    Mendukung fitur kasir, delivery/kurir, sinkronisasi offline-first, 
+    pembayaran QRIS via Xendit, analitik, dan laporan stok.
+  version: 1.0.0
+  contact:
+    name: Fathur
+    url: https://filament.fathurrzqn8n.web.id
+
+servers:
+  - url: https://filament.fathurrzqn8n.web.id/api/v1
+    description: Production Server
+
+tags:
+  - name: Auth
+    description: |
+      Otentikasi & manajemen device.
+      
+      ### Roles yang Tersedia
+      | Role | Deskripsi |
+      |------|-----------|
+      | `admin` | Administrator, akses penuh ke dashboard Filament dan semua fitur |
+      | `kasir` | Kasir, akses ke fitur POS, transaksi, dan laporan |
+      | `delivery` | Kurir, akses ke fitur delivery (shift, pengiriman, performa) |
+      
+      > Default role saat register: `kasir`
+  - name: Products
+    description: Master data produk
+  - name: Transactions
+    description: Manajemen transaksi (live mode)
+  - name: Sync
+    description: Sinkronisasi offline-first (batch upload/download)
+  - name: Analytics
+    description: Laporan & statistik penjualan
+  - name: QRIS Payment
+    description: Pembayaran QRIS via Xendit
+  - name: Delivery
+    description: Fitur kurir / delivery
+  - name: Stock Report
+    description: Laporan stok harian
+  - name: AI Forecast
+    description: Prediksi penjualan berbasis AI
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        Laravel Sanctum Bearer Token.
+        Sertakan di header: `Authorization: Bearer <token>`
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Fathur
+        username:
+          type: string
+          example: fathur
+        role:
+          type: string
+          enum: [admin, kasir, delivery]
+          description: |
+            Role user dalam sistem:
+            - `admin` — Administrator, akses penuh
+            - `kasir` — Kasir, akses POS & transaksi
+            - `delivery` — Kurir, akses fitur pengiriman
+          example: kasir
+
+    Device:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        device_name:
+          type: string
+          example: Kasir-Tab-01
+        platform:
+          type: string
+          enum: [android, ios]
+          example: android
+
+    Store:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Toko Fathur
+        address:
+          type: string
+          example: Jl. Raya No.1
+        phone:
+          type: string
+          example: "08123456789"
+        tax_rate:
+          type: number
+          format: float
+          example: 10.0
+        currency:
+          type: string
+          example: IDR
+        store_code:
+          type: string
+          example: TK-001
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          example: "1|xyz..."
+        user:
+          $ref: '#/components/schemas/User'
+        device:
+          $ref: '#/components/schemas/Device'
+        store:
+          $ref: '#/components/schemas/Store'
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        name:
+          type: string
+          example: Nasi Goreng
+        category_id:
+          type: string
+          format: uuid
+          example: 660e8400-e29b-41d4-a716-446655440000
+        description:
+          type: string
+          example: Nasi goreng spesial
+        barcode:
+          type: string
+          example: "899123456789"
+        purchase_price:
+          type: number
+          example: 15000
+        price:
+          type: number
+          example: 25000
+        is_active:
+          type: boolean
+          example: true
+        variants:
+          type: array
+          items:
+            type: object
+
+    OrderItem:
+      type: object
+      properties:
+        product_id:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        quantity:
+          type: integer
+          example: 1
+        bonus_qty:
+          type: integer
+          example: 0
+        unit_price:
+          type: number
+          example: 25000
+        subtotal:
+          type: number
+          example: 25000
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 1111-2222-3333-4444
+        receipt_number:
+          type: string
+          example: INV-20260530-ABCD
+        order_type:
+          type: string
+          enum: [dine-in, take-away, delivery]
+          example: dine-in
+        payment_method:
+          type: string
+          enum: [cash, qris, bon]
+          example: cash
+        status:
+          type: string
+          enum: [completed, pending, canceled, voided]
+          example: completed
+        tax_amount:
+          type: number
+          example: 2500
+        discount_amount:
+          type: number
+          example: 0
+        total_price:
+          type: number
+          example: 27500
+        received_amount:
+          type: number
+          example: 30000
+        change_amount:
+          type: number
+          example: 2500
+        customer_name:
+          type: string
+          example: Pak Budi
+        customer_phone:
+          type: string
+          example: "081234"
+        device_id:
+          type: integer
+          example: 1
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+
+    SyncUploadRequest:
+      type: object
+      required:
+        - device_id
+        - orders
+      properties:
+        device_id:
+          type: integer
+          example: 1
+        orders:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: 550e8400-e29b-41d4-a716-446655440000
+              receipt_number:
+                type: string
+                example: INV-2026-0001
+              status:
+                type: string
+                example: completed
+              order_type:
+                type: string
+                example: take-away
+              total_price:
+                type: number
+                example: 25000
+              tax_amount:
+                type: number
+                example: 2500
+              discount_amount:
+                type: number
+                example: 0
+              payment_method:
+                type: string
+                example: cash
+              received_amount:
+                type: number
+                example: 30000
+              change_amount:
+                type: number
+                example: 2500
+              created_at:
+                type: string
+                format: date-time
+                example: "2026-05-30T14:30:00Z"
+              items:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    product_id:
+                      type: string
+                      format: uuid
+                    quantity:
+                      type: integer
+                    unit_price:
+                      type: number
+                    subtotal:
+                      type: number
+
+    SyncUploadResponse:
+      type: object
+      properties:
+        synced:
+          type: integer
+          example: 1
+        failed:
+          type: integer
+          example: 0
+        errors:
+          type: array
+          items:
+            type: string
+        server_time:
+          type: string
+          format: date-time
+          example: "2026-05-30T15:00:00Z"
+
+    SyncDownloadResponse:
+      type: object
+      properties:
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+        server_time:
+          type: string
+          format: date-time
+          example: "2026-05-30T15:00:00Z"
+
+    DeliveryShift:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        date:
+          type: string
+          format: date
+          example: "2026-05-30"
+        status:
+          type: string
+          enum: [active, ended]
+          example: active
+        started_at:
+          type: string
+          example: "14:00:00"
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Unauthenticated.
+
+paths:
+  # =========================================================================
+  # AUTH
+  # =========================================================================
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      description: Login untuk aplikasi mobile (kasir & kurir). Mengembalikan token Sanctum.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password, device_name, platform]
+              properties:
+                username:
+                  type: string
+                  example: fathur
+                password:
+                  type: string
+                  example: password123
+                device_name:
+                  type: string
+                  example: Kasir-Tab-01
+                platform:
+                  type: string
+                  enum: [android, ios]
+                  example: android
+      responses:
+        '200':
+          description: Login berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Kredensial salah
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register
+      description: Mendaftarkan user baru (kasir/kurir).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, username, password, device_name, platform]
+              properties:
+                name:
+                  type: string
+                  example: Budi Kasir
+                username:
+                  type: string
+                  example: budikasir
+                password:
+                  type: string
+                  example: password123
+                role:
+                  type: string
+                  enum: [admin, kasir, delivery]
+                  description: |
+                    Opsional. Jika tidak diisi, default = `kasir`.
+                    Nilai yang valid: `admin`, `kasir`, `delivery`.
+                  example: kasir
+                device_name:
+                  type: string
+                  example: Kasir-Tab-02
+                platform:
+                  type: string
+                  enum: [android, ios]
+                  example: android
+      responses:
+        '201':
+          description: Registrasi berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '422':
+          description: Validasi gagal
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get Current User Profile
+      description: Mengembalikan profil user yang sedang login beserta info store.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  store:
+                    $ref: '#/components/schemas/Store'
+        '401':
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout
+      description: Menghapus token saat ini (revoke).
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Logout berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Logged out successfully
+
+  /auth/register-device:
+    post:
+      tags: [Auth]
+      summary: Register Device
+      description: Mendaftarkan device baru untuk push notification dll.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [device_name, platform]
+              properties:
+                device_name:
+                  type: string
+                  example: Kasir-Tab-01
+                platform:
+                  type: string
+                  enum: [android, ios]
+                  example: android
+      responses:
+        '201':
+          description: Device terdaftar
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Device registered successfully
+                  device:
+                    $ref: '#/components/schemas/Device'
+
+  # =========================================================================
+  # PRODUCTS
+  # =========================================================================
+  /products:
+    get:
+      tags: [Products]
+      summary: List Products
+      description: Menampilkan daftar produk. Mendukung filter dan sinkronisasi inkremental.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: category_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter berdasarkan ID kategori
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Pencarian berdasarkan nama produk
+        - name: updated_since
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Hanya produk yang diupdate setelah waktu ini (untuk sync)
+      responses:
+        '200':
+          description: Daftar produk
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+
+    post:
+      tags: [Products]
+      summary: Create Product
+      description: Membuat produk baru.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, price]
+              properties:
+                name:
+                  type: string
+                  example: Es Teh Manis
+                category_id:
+                  type: string
+                  format: uuid
+                  example: 660e8400-e29b-41d4-a716-446655440000
+                description:
+                  type: string
+                  example: Es Teh Manis Segar
+                barcode:
+                  type: string
+                  example: "899123456789"
+                purchase_price:
+                  type: number
+                  example: 3000
+                price:
+                  type: number
+                  example: 5000
+                is_active:
+                  type: boolean
+                  example: true
+      responses:
+        '201':
+          description: Produk berhasil dibuat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+
+  /products/{productId}:
+    put:
+      tags: [Products]
+      summary: Update Product
+      description: Mengupdate data produk. Semua field bersifat opsional.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                category_id:
+                  type: string
+                  format: uuid
+                description:
+                  type: string
+                barcode:
+                  type: string
+                purchase_price:
+                  type: number
+                price:
+                  type: number
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          description: Produk berhasil diupdate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          description: Produk tidak ditemukan
+
+    delete:
+      tags: [Products]
+      summary: Delete Product
+      description: Menghapus produk.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Produk berhasil dihapus
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Product deleted successfully
+        '404':
+          description: Produk tidak ditemukan
+
+  # =========================================================================
+  # TRANSACTIONS
+  # =========================================================================
+  /transactions:
+    get:
+      tags: [Transactions]
+      summary: List Transactions
+      description: Menampilkan daftar transaksi dengan filter dan pagination.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter tanggal spesifik (YYYY-MM-DD)
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Tanggal awal range (YYYY-MM-DD)
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Tanggal akhir range (YYYY-MM-DD)
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [completed, pending, canceled]
+          description: Filter berdasarkan status
+        - name: payment_method
+          in: query
+          schema:
+            type: string
+            enum: [cash, qris, bon]
+          description: Filter berdasarkan metode pembayaran
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 15
+          description: Jumlah data per halaman
+      responses:
+        '200':
+          description: Daftar transaksi (paginated)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Transaction'
+                  meta:
+                    type: object
+                    description: Informasi pagination Laravel
+
+    post:
+      tags: [Transactions]
+      summary: Store Transaction (Checkout)
+      description: |
+        Membuat transaksi baru / checkout.
+        Field `id` opsional namun sangat disarankan diisi oleh mobile app (UUID) 
+        agar bersifat idempotent (menghindari duplikasi saat koneksi putus-nyambung).
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [receipt_number, order_type, payment_method, total_price, items]
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: UUID idempotent key (disarankan)
+                  example: 1111-2222-3333-4444
+                receipt_number:
+                  type: string
+                  example: INV-20260530-ABCD
+                order_type:
+                  type: string
+                  enum: [dine-in, take-away, delivery]
+                  example: dine-in
+                payment_method:
+                  type: string
+                  enum: [cash, qris, bon]
+                  example: cash
+                tax_amount:
+                  type: number
+                  example: 2500
+                discount_amount:
+                  type: number
+                  example: 0
+                total_price:
+                  type: number
+                  example: 27500
+                received_amount:
+                  type: number
+                  example: 30000
+                change_amount:
+                  type: number
+                  example: 2500
+                customer_name:
+                  type: string
+                  example: Pak Budi
+                customer_phone:
+                  type: string
+                  example: "081234"
+                device_id:
+                  type: integer
+                  example: 1
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/OrderItem'
+      responses:
+        '201':
+          description: Transaksi berhasil dibuat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+
+  /transactions/{receiptNumber}:
+    get:
+      tags: [Transactions]
+      summary: Show Single Transaction
+      description: Menampilkan detail transaksi beserta daftar item pesanan.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: receiptNumber
+          in: path
+          required: true
+          schema:
+            type: string
+          example: INV-20260530-ABCD
+      responses:
+        '200':
+          description: Detail transaksi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '404':
+          description: Transaksi tidak ditemukan
+
+  /transactions/{receiptNumber}/void:
+    put:
+      tags: [Transactions]
+      summary: Void Transaction
+      description: Membatalkan (void) transaksi.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: receiptNumber
+          in: path
+          required: true
+          schema:
+            type: string
+          example: INV-20260530-ABCD
+      responses:
+        '200':
+          description: Transaksi berhasil di-void
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Transaction voided successfully
+        '404':
+          description: Transaksi tidak ditemukan
+
+  /transactions/{receiptNumber}/pay-bon:
+    put:
+      tags: [Transactions]
+      summary: Pay Bon (Kasbon)
+      description: Mengubah status transaksi bon menjadi `completed` dan memotong stok.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: receiptNumber
+          in: path
+          required: true
+          schema:
+            type: string
+          example: INV-20260530-ABCD
+      responses:
+        '200':
+          description: Bon berhasil dilunasi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Bon paid successfully
+
+  # =========================================================================
+  # SYNC (Offline-First)
+  # =========================================================================
+  /sync/upload:
+    post:
+      tags: [Sync]
+      summary: Upload Offline Transactions
+      description: |
+        Upload batch transaksi offline dari mobile ke server (Mobile → Server).
+        Mendukung sinkronisasi idempotent berdasarkan UUID.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncUploadRequest'
+      responses:
+        '200':
+          description: Sync berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncUploadResponse'
+
+  /sync/download:
+    get:
+      tags: [Sync]
+      summary: Download Data Server
+      description: |
+        Download data terbaru dari server ke mobile (Server → Mobile).
+        Menggunakan parameter `since` untuk sinkronisasi inkremental.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: since
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Hanya data yang diupdate setelah waktu ini (ISO 8601)
+        - name: device_id
+          in: query
+          schema:
+            type: integer
+          description: ID device yang meminta data
+      responses:
+        '200':
+          description: Data terbaru dari server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncDownloadResponse'
+
+  /sync/status:
+    get:
+      tags: [Sync]
+      summary: Check Sync Status
+      description: Mengembalikan log sinkronisasi terakhir dari device tersebut.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: device_id
+          in: query
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Status sinkronisasi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  last_synced_at:
+                    type: string
+                    format: date-time
+                  synced_orders_count:
+                    type: integer
+                  status:
+                    type: string
+
+  # =========================================================================
+  # ANALYTICS & REPORTS
+  # =========================================================================
+  /analytics/daily:
+    get:
+      tags: [Analytics]
+      summary: Daily Summary
+      description: Ringkasan penjualan harian.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Tanggal yang diminta (YYYY-MM-DD). Default hari ini.
+          example: "2026-05-30"
+      responses:
+        '200':
+          description: Ringkasan harian
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  date:
+                    type: string
+                    format: date
+                  total_transactions:
+                    type: integer
+                  total_revenue:
+                    type: number
+                  total_tax:
+                    type: number
+                  total_discount:
+                    type: number
+
+  /analytics/hourly:
+    get:
+      tags: [Analytics]
+      summary: Hourly Chart
+      description: Data grafik penjualan per jam.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Tanggal yang diminta (YYYY-MM-DD)
+          example: "2026-05-30"
+      responses:
+        '200':
+          description: Data per jam
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        hour:
+                          type: integer
+                          example: 14
+                        total:
+                          type: number
+                          example: 150000
+                        count:
+                          type: integer
+                          example: 6
+
+  /analytics/summary:
+    get:
+      tags: [Analytics]
+      summary: Periodic Summary
+      description: Ringkasan penjualan berdasarkan periode (minggu/bulan).
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [week, month]
+          description: Periode ringkasan
+          example: week
+      responses:
+        '200':
+          description: Ringkasan periodik
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  period:
+                    type: string
+                  total_transactions:
+                    type: integer
+                  total_revenue:
+                    type: number
+                  average_per_day:
+                    type: number
+
+  /analytics/top-products:
+    get:
+      tags: [Analytics]
+      summary: Top Products
+      description: Produk terlaris berdasarkan jumlah terjual.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Jumlah produk yang ditampilkan
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter tanggal (YYYY-MM-DD)
+      responses:
+        '200':
+          description: Daftar produk terlaris
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        product_id:
+                          type: string
+                          format: uuid
+                        product_name:
+                          type: string
+                        total_sold:
+                          type: integer
+                        total_revenue:
+                          type: number
+
+  /analytics/bon-report:
+    get:
+      tags: [Analytics]
+      summary: Bon Report (Hutang)
+      description: Laporan kasbon / hutang yang belum lunas.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Laporan bon
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_bon:
+                    type: integer
+                  total_amount:
+                    type: number
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        receipt_number:
+                          type: string
+                        customer_name:
+                          type: string
+                        total_price:
+                          type: number
+                        created_at:
+                          type: string
+                          format: date-time
+
+  # =========================================================================
+  # QRIS PAYMENT
+  # =========================================================================
+  /payments/qris/create:
+    post:
+      tags: [QRIS Payment]
+      summary: Create QRIS Payment
+      description: Membuat invoice QRIS via Xendit untuk pembayaran non-tunai.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [receipt_number, amount]
+              properties:
+                receipt_number:
+                  type: string
+                  example: INV-20260530-ABCD
+                amount:
+                  type: number
+                  example: 27500
+      responses:
+        '201':
+          description: QRIS invoice berhasil dibuat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  qr_string:
+                    type: string
+                    description: String QR code untuk di-render di mobile
+                  invoice_url:
+                    type: string
+                    format: uri
+                    description: URL invoice Xendit
+                  external_id:
+                    type: string
+                  status:
+                    type: string
+                    example: PENDING
+
+  /payments/qris/{receiptNumber}/status:
+    get:
+      tags: [QRIS Payment]
+      summary: Check QRIS Payment Status
+      description: Mengecek status pembayaran QRIS berdasarkan receipt number.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: receiptNumber
+          in: path
+          required: true
+          schema:
+            type: string
+          example: INV-20260530-ABCD
+      responses:
+        '200':
+          description: Status pembayaran
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  receipt_number:
+                    type: string
+                  status:
+                    type: string
+                    enum: [PENDING, PAID, EXPIRED, FAILED]
+                  paid_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+
+  # =========================================================================
+  # DELIVERY (Kurir)
+  # =========================================================================
+  /delivery/start-shift:
+    post:
+      tags: [Delivery]
+      summary: Start Shift
+      description: Memulai shift delivery untuk kurir yang sedang login.
+      security:
+        - BearerAuth: []
+      responses:
+        '201':
+          description: Shift dimulai
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Shift delivery dimulai
+                  data:
+                    $ref: '#/components/schemas/DeliveryShift'
+
+  /delivery/end-shift:
+    post:
+      tags: [Delivery]
+      summary: End Shift
+      description: Mengakhiri shift delivery. Mengembalikan summary total uang tunai terkumpul.
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+                  example: "Shift berjalan lancar, 1 retur."
+      responses:
+        '200':
+          description: Shift berakhir
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  total_cash_collected:
+                    type: number
+                  total_deliveries:
+                    type: integer
+                  shift:
+                    $ref: '#/components/schemas/DeliveryShift'
+
+  /delivery/my-orders:
+    get:
+      tags: [Delivery]
+      summary: Get My Orders
+      description: Daftar order yang ditugaskan ke kurir yang login pada hari ini.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Tanggal filter (YYYY-MM-DD). Default hari ini.
+      responses:
+        '200':
+          description: Daftar order kurir
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Transaction'
+
+  /delivery/orders/{receiptNumber}/status:
+    put:
+      tags: [Delivery]
+      summary: Update Order Delivery Status
+      description: Memperbarui status pengiriman order.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: receiptNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [delivery_status]
+              properties:
+                delivery_status:
+                  type: string
+                  enum: [pending, on_the_way, delivered, returned]
+                  example: delivered
+      responses:
+        '200':
+          description: Status delivery diperbarui
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Status delivery diperbarui
+                  delivery_status:
+                    type: string
+                    example: delivered
+
+  /delivery/performance:
+    get:
+      tags: [Delivery]
+      summary: Performance Stats
+      description: Statistik performa pengiriman kurir.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, week, month]
+            default: today
+          description: Periode statistik
+      responses:
+        '200':
+          description: Statistik kurir
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_deliveries:
+                    type: integer
+                  total_returned:
+                    type: integer
+                  success_rate:
+                    type: number
+                    format: float
+                  total_cash_collected:
+                    type: number
+
+  # =========================================================================
+  # STOCK REPORT
+  # =========================================================================
+  /stock-report/daily:
+    get:
+      tags: [Stock Report]
+      summary: Daily Stock Report
+      description: Laporan stok harian.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Laporan stok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        product_id:
+                          type: string
+                          format: uuid
+                        product_name:
+                          type: string
+                        current_stock:
+                          type: integer
+                        sold_today:
+                          type: integer
+
+  # =========================================================================
+  # AI FORECAST
+  # =========================================================================
+  /ai/forecast:
+    get:
+      tags: [AI Forecast]
+      summary: AI Sales Forecast
+      description: Prediksi penjualan berbasis AI (placeholder).
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Data forecast
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  forecast:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          format: date
+                        predicted_revenue:
+                          type: number
+                        confidence:
+                          type: number
+                          format: float
+
+  # =========================================================================
+  # XENDIT WEBHOOK (Public)
+  # =========================================================================
+  /webhook/xendit:
+    post:
+      tags: [QRIS Payment]
+      summary: Xendit Webhook Callback
+      description: |
+        Endpoint callback dari Xendit untuk notifikasi pembayaran.
+        **Public** — tidak memerlukan Bearer Token.
+        Diproteksi oleh Xendit callback token verification.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Payload dari Xendit (format bervariasi berdasarkan event type)
+      responses:
+        '200':
+          description: Webhook diterima

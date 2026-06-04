@@ -24,10 +24,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     final name = _nameController.text.trim();
-    final email = _emailController.text.trim();
+    final username = _emailController.text.trim();
     final password = _passwordController.text;
 
-    if (name.isEmpty || email.isEmpty || password.isEmpty) {
+    if (name.isEmpty || username.isEmpty || password.isEmpty) {
       setState(() {
          _isLoading = false;
          _errorMessage = 'All fields are required';
@@ -35,7 +35,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    final response = await _apiService.register(name, email, password, _selectedRole);
+    final response = await _apiService.register(name, username, password, _selectedRole);
 
     if (mounted) {
       setState(() {
@@ -121,10 +121,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
+                  keyboardType: TextInputType.text,
                   decoration: InputDecoration(
-                    labelText: 'Email Address',
-                    prefixIcon: const Icon(Icons.email_outlined),
+                    labelText: 'Username',
+                    prefixIcon: const Icon(Icons.person_outline),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -148,7 +148,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: _selectedRole,
+                  initialValue: _selectedRole,
                   decoration: InputDecoration(
                     labelText: 'Role',
                     prefixIcon: const Icon(Icons.badge_outlined),

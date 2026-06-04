@@ -41,7 +41,7 @@ void main() async {
     final products = await ProductRepository().getProducts();
     print("=== DUMMY PRODUCTS ===");
     for (var p in products) {
-      print("${p.id}: ${p.nama} - Rp${p.harga} (Stok: ${p.stok})");
+      print("${p.id}: ${p.name} - Rp${p.price} (Stok: ${p.stok})");
     }
     print("======================");
   }
@@ -72,13 +72,13 @@ class PrecisionPOSApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       initialRoute: initialRoute,
-      getPages: AppPages.routes,
-      routes: {
-        '/login': (context) => const LoginScreen(),
-        '/home': (context) => const MainShell(),
-        '/order': (context) => const OrderInputScreen(),
-        '/history': (context) => const TransactionHistoryScreen(),
-      },
+      getPages: [
+        ...AppPages.routes,
+        GetPage(name: '/login', page: () => const LoginScreen()),
+        GetPage(name: '/home', page: () => const MainShell()),
+        GetPage(name: '/order', page: () => const OrderInputScreen()),
+        GetPage(name: '/history', page: () => const TransactionHistoryScreen()),
+      ],
     );
   }
 }

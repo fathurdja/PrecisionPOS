@@ -73,8 +73,9 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
           int hour = int.tryParse(data['hour'].toString()) ?? 0;
           double sales = (data['hourly_sales'] as num?)?.toDouble() ?? 0.0;
           int bucketIndex = 0;
-          if (hour >= 8 && hour < 10) bucketIndex = 0;
-          else if (hour >= 10 && hour < 12) bucketIndex = 1;
+          if (hour >= 8 && hour < 10) {
+            bucketIndex = 0;
+          } else if (hour >= 10 && hour < 12) bucketIndex = 1;
           else if (hour >= 12 && hour < 14) bucketIndex = 2;
           else if (hour >= 14 && hour < 16) bucketIndex = 3;
           else if (hour >= 16 && hour < 18) bucketIndex = 4;

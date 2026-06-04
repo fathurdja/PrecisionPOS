@@ -13,7 +13,8 @@ class TransactionRepository {
           conflictAlgorithm: ConflictAlgorithm.replace);
 
       for (var item in items) {
-        await txn.insert('order_items', item.toMap());
+        await txn.insert('order_items', item.toMap(), 
+            conflictAlgorithm: ConflictAlgorithm.replace);
         
         final productMaps = await txn.query(
           'products',
@@ -40,6 +41,17 @@ class TransactionRepository {
 
     return maps.map((map) => TransactionModel.fromMap(map)).toList();
   }
+  
+  Future<List<TransactionModel>> getUnsyncedTransactions() async {
+    final db = await DatabaseHelper.instance.database;
+    final maps = await db.query('transactions', where: 'sync_status = ?', whereArgs: ['pending']);
+    return maps.map((map) => TransactionModel.fromMap(map)).toList();
+  }
+
+  Future<void> markAsSynced(String transactionId) async {
+    final db = await DatabaseHelper.instance.database;
+    await db.update('transactions', {'sync_status': 'synced'}, where: 'id = ?', whereArgs: [transactionId]);
+  }
 
   Future<List<OrderItemModel>> getOrderItems(String receiptId) async {
     final db = await DatabaseHelper.instance.database;
@@ -58,9 +70,9 @@ class TransactionRepository {
       // 1. Update transaction status
       await txn.update(
         'transactions',
-        {'status': 'Void'},
-        where: 'receipt_id = ?',
-        whereArgs: [receiptId],
+        {'status': 'voided'},
+        where: 'id = ? OR receipt_number = ?',
+        whereArgs: [receiptId, receiptId],
       );
 
       // 2. Fetch order items to restore stock
@@ -107,9 +119,9 @@ class TransactionRepository {
     final result = await db.rawQuery('''
       SELECT 
         COUNT(*) as total_orders,
-        SUM(total_harga) as total_sales
+        SUM(total_price) as total_sales
       FROM transactions
-      WHERE date(tanggal) >= ? AND date(tanggal) <= ? AND status != 'Void'
+      WHERE date(tanggal) >= ? AND date(tanggal) <= ? AND status != 'voided'
     ''', [startDateStr, endDateStr]);
 
     if (result.isNotEmpty) {
@@ -136,8 +148,8 @@ class TransactionRepository {
     final result = await db.rawQuery('''
       SELECT SUM(oi.qty) as total_items
       FROM order_items oi
-      JOIN transactions t ON oi.receipt_id = t.receipt_id
-      WHERE date(t.tanggal) >= ? AND date(t.tanggal) <= ? AND t.status != 'Void'
+      JOIN transactions t ON oi.receipt_id = t.id
+      WHERE date(t.tanggal) >= ? AND date(t.tanggal) <= ? AND t.status != 'voided'
     ''', [startDateStr, endDateStr]);
     
     if (result.isNotEmpty) {
@@ -157,9 +169,9 @@ class TransactionRepository {
     final result = await db.rawQuery('''
       SELECT 
         strftime('%H', tanggal) as hour,
-        SUM(total_harga) as hourly_sales
+        SUM(total_price) as hourly_sales
       FROM transactions
-      WHERE date(tanggal) = ? AND status != 'Void'
+      WHERE date(tanggal) = ? AND status != 'voided'
       GROUP BY strftime('%H', tanggal)
       ORDER BY hour ASC
     ''', [dateString]);
@@ -179,7 +191,7 @@ class TransactionRepository {
     final db = await DatabaseHelper.instance.database;
     
     String whereClause = 'status != ?';
-    List<dynamic> whereArgs = ['Void'];
+    List<dynamic> whereArgs = ['voided'];
     
     if (startDateStr != null && endDateStr != null) {
       whereClause += ' AND date(tanggal) >= ? AND date(tanggal) <= ?';
@@ -198,15 +210,15 @@ class TransactionRepository {
     List<Map<String, dynamic>> result = [];
     
     for (var txn in txns) {
-      final receiptId = txn['receipt_id'] as String;
+      final id = txn['id'] as String;
       
       final items = await db.rawQuery('''
-        SELECT p.nama, oi.qty
+        SELECT p.name, oi.qty
         FROM order_items oi
         JOIN products p ON oi.product_id = p.id
         WHERE oi.receipt_id = ?
         LIMIT 1
-      ''', [receiptId]);
+      ''', [id]);
       
       String itemName = 'Unknown Item';
       int itemQty = 0;
@@ -214,18 +226,18 @@ class TransactionRepository {
       
       final totalItemsResult = await db.rawQuery('''
         SELECT COUNT(*) as count FROM order_items WHERE receipt_id = ?
-      ''', [receiptId]);
+      ''', [id]);
       
       if (totalItemsResult.isNotEmpty) {
         totalItems = (totalItemsResult.first['count'] as int?) ?? 0;
       }
       
       if (items.isNotEmpty) {
-        itemName = items.first['nama'] as String;
+        itemName = items.first['name'] as String;
         itemQty = (items.first['qty'] as int?) ?? 0;
         
         if (totalItems > 1) {
-          itemName += ' (+${totalItems - 1} more)';
+          itemName += ' (+\${totalItems - 1} more)';
         }
       }
       
@@ -239,4 +251,3 @@ class TransactionRepository {
     return result;
   }
 }
-

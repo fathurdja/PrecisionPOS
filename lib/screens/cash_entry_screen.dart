@@ -60,10 +60,13 @@ class _CashEntryScreenState extends State<CashEntryScreen> {
     
     // Create new transaction with updated status and metadata
     final completedTxn = TransactionModel(
-      receiptId: widget.transaction.receiptId,
+      id: widget.transaction.id,
+      receiptNumber: widget.transaction.receiptNumber,
       tanggal: widget.transaction.tanggal,
       totalHarga: widget.transaction.totalHarga,
       status: 'Completed',
+      orderType: widget.transaction.orderType,
+      paymentMethod: widget.transaction.paymentMethod,
       customerName: widget.transaction.customerName,
       taxAmount: widget.transaction.taxAmount,
       serviceAmount: widget.transaction.serviceAmount,

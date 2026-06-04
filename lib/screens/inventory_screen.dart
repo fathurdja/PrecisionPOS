@@ -94,7 +94,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        product.nama,
+                                        product.name,
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w700,
@@ -103,7 +103,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        'Rp ${product.harga.toInt()}',
+                                        'Rp ${product.price.toStringAsFixed(0)}',
                                         style: TextStyle(
                                           fontSize: 14,
                                           color: AppColors.onSurfaceVariant,

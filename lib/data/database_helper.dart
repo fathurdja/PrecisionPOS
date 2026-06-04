@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
 
 import '../models/product_model.dart';
 
@@ -23,59 +24,73 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4, // Increment to 4 to trigger wipe
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
   }
 
   Future _createDB(Database db, int version) async {
-    const idType = 'INTEGER PRIMARY KEY AUTOINCREMENT';
     const textType = 'TEXT NOT NULL';
     const integerType = 'INTEGER NOT NULL';
     const realType = 'REAL NOT NULL';
 
     await db.execute('''
       CREATE TABLE products (
-        id $idType,
-        nama $textType,
-        harga $realType,
-        stok $integerType
+        id TEXT PRIMARY KEY,
+        name $textType,
+        category_id TEXT,
+        description TEXT,
+        barcode TEXT,
+        purchase_price REAL,
+        price $realType,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        stok INTEGER NOT NULL DEFAULT 0
       )
     ''');
 
     await db.execute('''
       CREATE TABLE transactions (
-        receipt_id TEXT PRIMARY KEY,
+        id TEXT PRIMARY KEY,
+        receipt_number $textType,
         tanggal $textType,
-        total_harga $realType,
+        total_price $realType,
         status $textType,
+        order_type $textType,
+        payment_method $textType,
+        tax_amount REAL DEFAULT 0.0,
+        discount_amount REAL DEFAULT 0.0,
+        received_amount REAL DEFAULT 0.0,
+        change_amount REAL DEFAULT 0.0,
         customer_name TEXT,
         customer_phone TEXT,
         cashier_name TEXT,
-        tax_amount REAL DEFAULT 0.0,
-        service_amount REAL DEFAULT 0.0
-      )
-    ''');
-
-    await db.execute('''
-      CREATE TABLE customers (
-        id $idType,
-        name $textType,
-        phone TEXT NOT NULL UNIQUE,
-        created_at TEXT
+        service_amount REAL DEFAULT 0.0,
+        device_id INTEGER,
+        sync_status TEXT DEFAULT 'pending'
       )
     ''');
 
     await db.execute('''
       CREATE TABLE order_items (
-        id $idType,
+        id TEXT PRIMARY KEY,
         receipt_id $textType,
-        product_id $integerType,
+        product_id $textType,
         qty $integerType,
+        bonus_qty INTEGER DEFAULT 0,
+        unit_price $realType,
         subtotal $realType,
-        FOREIGN KEY (receipt_id) REFERENCES transactions (receipt_id),
+        FOREIGN KEY (receipt_id) REFERENCES transactions (id),
         FOREIGN KEY (product_id) REFERENCES products (id)
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE customers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name $textType,
+        phone TEXT NOT NULL UNIQUE,
+        created_at TEXT
       )
     ''');
 
@@ -96,52 +111,16 @@ class DatabaseHelper {
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      try {
-        await db.execute('ALTER TABLE transactions ADD COLUMN cashier_name TEXT');
-      } catch (e) {
-        print("Column cashier_name might already exist: $e");
-      }
-      try {
-        await db.execute('ALTER TABLE transactions ADD COLUMN tax_amount REAL DEFAULT 0.0');
-      } catch (e) {
-        print("Column tax_amount might already exist: $e");
-      }
-      try {
-        await db.execute('ALTER TABLE transactions ADD COLUMN service_amount REAL DEFAULT 0.0');
-      } catch (e) {
-        print("Column service_amount might already exist: $e");
-      }
-
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS staff (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL,
-          email TEXT NOT NULL UNIQUE,
-          role TEXT NOT NULL,
-          password TEXT,
-          last_active TEXT,
-          revenue REAL DEFAULT 0.0
-        )
-      ''');
-
-      await _insertInitialStaff(db);
-    }
-    if (oldVersion < 3) {
-      try {
-        await db.execute('ALTER TABLE transactions ADD COLUMN customer_phone TEXT');
-      } catch (e) {
-        print("Column customer_phone might already exist: $e");
-      }
-
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS customers (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL,
-          phone TEXT NOT NULL UNIQUE,
-          created_at TEXT
-        )
-      ''');
+    if (oldVersion < 4) {
+      // User requested to wipe local data to migrate to new API
+      print("Migrating to V4 - dropping all tables to wipe old data.");
+      await db.execute('DROP TABLE IF EXISTS order_items');
+      await db.execute('DROP TABLE IF EXISTS transactions');
+      await db.execute('DROP TABLE IF EXISTS products');
+      await db.execute('DROP TABLE IF EXISTS customers');
+      await db.execute('DROP TABLE IF EXISTS staff');
+      
+      await _createDB(db, newVersion);
     }
   }
 
@@ -176,14 +155,31 @@ class DatabaseHelper {
   }
 
   Future _insertDummyProducts(Database db) async {
-    final String response =
-        await rootBundle.loadString('assets/data/product.json');
-    final List<dynamic> data = json.decode(response);
+    try {
+      final String response =
+          await rootBundle.loadString('assets/data/product.json');
+      final List<dynamic> data = json.decode(response);
+      
+      final uuid = Uuid();
 
-    for (var item in data) {
-      final product = ProductModel.fromJson(item as Map<String, dynamic>);
-      await db.insert('products', product.toJson());
+      for (var item in data) {
+        // Map old structure to new structure if necessary, or just load new dummy format
+        final oldMap = item as Map<String, dynamic>;
+        
+        final newMap = {
+          'id': oldMap['id']?.toString() ?? uuid.v4(),
+          'name': oldMap['nama'] ?? oldMap['name'] ?? 'Unknown',
+          'price': ((oldMap['harga'] ?? oldMap['price'] ?? 0) as num).toDouble(),
+          'stok': oldMap['stok'] ?? 100,
+          'is_active': 1,
+        };
+        
+        final product = ProductModel.fromJson(newMap);
+        await db.insert('products', product.toJson());
+      }
+      print("Database Initialized and Dummy Products Inserted.");
+    } catch (e) {
+      print("Error loading dummy products: \$e");
     }
-    print("Database Initialized and Dummy Products Inserted.");
   }
 }

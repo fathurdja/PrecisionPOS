@@ -36,10 +36,13 @@ class DataImportService {
           final String status = row[3].toString();
           
           final transaction = TransactionModel(
-            receiptId: receiptId,
+            id: receiptId, // Fallback to using receiptId as the ID if imported
+            receiptNumber: receiptId,
             tanggal: tanggal,
             totalHarga: totalHarga,
             status: status,
+            orderType: 'take-away',
+            paymentMethod: 'cash',
           );
           
           await _repo.saveTransaction(transaction, []);

@@ -11,6 +11,7 @@ import '../repositories/customer_repository.dart';
 import '../utils/helpers.dart';
 import 'payment_method_screen.dart';
 import '../utils/currency_format.dart';
+import 'package:uuid/uuid.dart';
 
 class CartItem {
   final ProductModel product;
@@ -19,7 +20,7 @@ class CartItem {
 
   CartItem({required this.product, this.qty = 1, this.bonusQty = 0});
 
-  double get subtotal => product.harga * qty;
+  double get subtotal => product.price * qty;
   int get totalQty => qty + bonusQty;
 }
 
@@ -35,7 +36,7 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
   final CustomerRepository _customerRepo = CustomerRepository();
 
   List<ProductModel> _availableProducts = [];
-  List<CartItem> _cart = [];
+  final List<CartItem> _cart = [];
 
   String _receiptNumber = '';
   String _issueDate = '';
@@ -101,11 +102,15 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
   void _processPayment() {
     if (_cart.isEmpty) return;
 
+    final transactionId = const Uuid().v4();
     final transaction = TransactionModel(
-      receiptId: _receiptNumber,
+      id: transactionId,
+      receiptNumber: _receiptNumber,
       tanggal: _issueDate,
       totalHarga: total,
       status: 'Pending',
+      orderType: 'take-away',
+      paymentMethod: 'cash',
       customerName: _customerNameController.text.trim().isNotEmpty 
           ? _customerNameController.text.trim() 
           : null,
@@ -131,17 +136,21 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
           final list = <OrderItemModel>[];
           if (item.qty > 0) {
             list.add(OrderItemModel(
-              receiptId: _receiptNumber,
+              id: const Uuid().v4(),
+              receiptId: transactionId,
               productId: item.product.id,
               qty: item.qty,
+              unitPrice: item.product.price,
               subtotal: item.subtotal,
             ));
           }
           if (item.bonusQty > 0) {
             list.add(OrderItemModel(
-              receiptId: _receiptNumber,
+              id: const Uuid().v4(),
+              receiptId: transactionId,
               productId: item.product.id,
               qty: item.bonusQty,
+              unitPrice: item.product.price,
               subtotal: 0,
             ));
           }
@@ -444,7 +453,7 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
                     (p) => DropdownMenuItem(
                       value: p,
                       child: Text(
-                        '${p.nama} - Rp ${p.harga.toInt()} (Stock: ${p.stok})',
+                        '${p.name} - Rp ${p.price.toInt()} (Stock: ${p.stok})',
                       ),
                     ),
                   )
@@ -480,8 +489,8 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
             padding: const EdgeInsets.only(bottom: 12),
             child: _buildItemCard(
               Icons.shopping_bag,
-              item.product.nama,
-              item.product.harga,
+              item.product.name,
+              item.product.price,
               item.qty,
               item.bonusQty,
               (newQty) {
@@ -516,7 +525,7 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
               },
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }

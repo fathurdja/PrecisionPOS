@@ -9,7 +9,7 @@ class ProductRepository {
     return maps.map((map) => ProductModel.fromMap(map)).toList();
   }
 
-  Future<int> reduceStock(int productId, int quantity) async {
+  Future<int> reduceStock(String productId, int quantity) async {
     final db = await DatabaseHelper.instance.database;
     final productMaps = await db.query(
       'products',
@@ -31,7 +31,7 @@ class ProductRepository {
     return 0;
   }
 
-  Future<int> restoreStock(int productId, int quantity) async {
+  Future<int> restoreStock(String productId, int quantity) async {
     final db = await DatabaseHelper.instance.database;
     final productMaps = await db.query(
       'products',
