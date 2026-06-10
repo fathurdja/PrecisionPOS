@@ -82,9 +82,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     if (!mounted) return;
     
     String method = 'CASH/QRIS';
-    if (t.status == 'Bon · Belum Lunas') {
+    if (t.status == 'pending' && t.paymentMethod == 'bon') {
         method = 'BON';
-    } else if (t.status == 'Void') {
+    } else if (t.status == 'voided') {
         method = 'VOID';
     }
 
@@ -212,8 +212,8 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   }
 
   Widget _buildTransactionCard(TransactionModel t) {
-    final isVoid = t.status == 'Void' || t.status == 'Refunded';
-    final isPending = t.status == 'Pending';
+    final isVoid = t.status == 'voided' || t.status == 'refunded';
+    final isPending = t.status == 'pending';
 
     Color bgColor = AppColors.surfaceContainerLowest;
     Color statusBg = AppColors.secondaryContainer.withValues(alpha: 0.3);

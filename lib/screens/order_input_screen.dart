@@ -61,6 +61,7 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
 
   Future<void> _loadTaxServiceSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _taxRate = prefs.getDouble('tax_rate') ?? 8.0;
       _serviceRate = prefs.getDouble('service_rate') ?? 0.0;
@@ -89,6 +90,7 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
 
   Future<void> _loadProducts() async {
     final products = await _productRepo.getProducts();
+    if (!mounted) return;
     setState(() {
       _availableProducts = products;
     });
@@ -108,7 +110,7 @@ class _OrderInputScreenState extends State<OrderInputScreen> {
       receiptNumber: _receiptNumber,
       tanggal: _issueDate,
       totalHarga: total,
-      status: 'Pending',
+      status: 'pending',
       orderType: 'take-away',
       paymentMethod: 'cash',
       customerName: _customerNameController.text.trim().isNotEmpty 

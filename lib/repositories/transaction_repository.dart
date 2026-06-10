@@ -45,7 +45,23 @@ class TransactionRepository {
   Future<List<TransactionModel>> getUnsyncedTransactions() async {
     final db = await DatabaseHelper.instance.database;
     final maps = await db.query('transactions', where: 'sync_status = ?', whereArgs: ['pending']);
-    return maps.map((map) => TransactionModel.fromMap(map)).toList();
+    
+    List<TransactionModel> transactions = [];
+    for (var map in maps) {
+      final itemsMaps = await db.query(
+        'order_items',
+        where: 'receipt_id = ?',
+        whereArgs: [map['id']],
+      );
+      
+      final items = itemsMaps.map((itemMap) => OrderItemModel.fromMap(itemMap)).toList();
+      
+      var mutableMap = Map<String, dynamic>.from(map);
+      mutableMap['items'] = itemsMaps; // This will be passed to fromMap
+      
+      transactions.add(TransactionModel.fromMap(mutableMap));
+    }
+    return transactions;
   }
 
   Future<void> markAsSynced(String transactionId) async {

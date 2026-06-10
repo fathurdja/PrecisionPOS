@@ -1,9 +1,10 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'api_config.dart';
+import 'api_client.dart';
 import '../repositories/product_repository.dart';
 import '../repositories/transaction_repository.dart';
 import '../models/product_model.dart';
+import '../models/customer_model.dart';
 import '../data/database_helper.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SyncService {
   final TransactionRepository _transactionRepo = TransactionRepository();
   final ProductRepository _productRepo = ProductRepository();
+  final ApiClient _client = ApiClient();
 
   Future<int?> _getDeviceId() async {
     // A simplistic way to get a device id for sync (since API requires integer device_id). 
@@ -26,11 +28,22 @@ class SyncService {
 
   Future<bool> uploadTransactions() async {
     try {
-      final unsynced = await _transactionRepo.getUnsyncedTransactions();
-      if (unsynced.isEmpty) return true;
+      // Force all transactions to 'pending' as requested by user
+      final db = await DatabaseHelper.instance.database;
+      await db.update('transactions', {'sync_status': 'pending'});
 
-      final token = await ApiConfig.getToken();
-      if (token == null) return false;
+      final allTx = await _transactionRepo.getTransactions();
+      print('=== DEBUG: ALL TRANSACTIONS IN LOCAL DB ===');
+      print(jsonEncode(allTx.map((t) => t.toJson()).toList()));
+
+      final unsynced = await _transactionRepo.getUnsyncedTransactions();
+      print('=== DEBUG: UNSYNCED TRANSACTIONS ===');
+      print(jsonEncode(unsynced.map((t) => t.toJson()).toList()));
+
+      if (unsynced.isEmpty) {
+        print('No unsynced transactions found.');
+        return true;
+      }
 
       final deviceId = await _getDeviceId();
 
@@ -38,16 +51,20 @@ class SyncService {
         'device_id': deviceId,
         'orders': unsynced.map((t) => t.toJson()).toList(),
       };
+      
+      print('=== SYNC UPLOAD DEBUG ===');
+      print('Payload: ${jsonEncode(payload)}');
 
-      final response = await http.post(
-        Uri.parse('\${ApiConfig.baseUrl}/sync/upload'),
+      final response = await _client.post(
+        Uri.parse('${ApiConfig.baseUrl}/sync/upload'),
         headers: {
-          'Authorization': 'Bearer \$token',
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
         },
         body: jsonEncode(payload),
       );
+
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -56,35 +73,38 @@ class SyncService {
           await _transactionRepo.markAsSynced(t.id);
         }
         return true;
+      } else {
+        print('Sync Upload Error Status: ${response.statusCode}');
+        print('Sync Upload Error Body: ${response.body}');
+        return false;
       }
-      return false;
     } catch (e) {
-      print('Sync Upload Error: \$e');
+      print('Sync Upload Exception: $e');
       return false;
     }
   }
 
   Future<bool> downloadData() async {
     try {
-      final token = await ApiConfig.getToken();
-      if (token == null) return false;
-
       final prefs = await SharedPreferences.getInstance();
       final lastSyncTime = prefs.getString('last_sync_time');
       final deviceId = await _getDeviceId();
 
-      String url = '\${ApiConfig.baseUrl}/sync/download?device_id=\$deviceId';
+      final Map<String, String> queryParams = {
+        'device_id': deviceId.toString(),
+      };
       if (lastSyncTime != null) {
-        url += '&since=\$lastSyncTime';
+        queryParams['since'] = lastSyncTime;
       }
 
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Authorization': 'Bearer \$token',
-          'Accept': 'application/json',
-        },
-      );
+      final Uri uri = Uri.parse('${ApiConfig.baseUrl}/sync/download').replace(queryParameters: queryParams);
+
+      final response = await _client.get(uri);
+      
+      print('=== SYNC DOWNLOAD DEBUG ===');
+      print('URL: $uri');
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -98,6 +118,13 @@ class SyncService {
               await txn.insert('products', product.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
             }
           }
+          // Sync customers
+          if (data['customers'] != null) {
+            for (var item in data['customers']) {
+              final customer = CustomerModel.fromMap(item);
+              await txn.insert('customers', customer.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+            }
+          }
           // Sync orders (if any downloaded from server for this device)
           // Simplified here, skipping full order sync parsing as it's typically for multi-device environments
         });
@@ -106,10 +133,13 @@ class SyncService {
           await prefs.setString('last_sync_time', data['server_time']);
         }
         return true;
+      } else {
+        print('Sync Download Error Status: ${response.statusCode}');
+        print('Sync Download Error Body: ${response.body}');
       }
       return false;
     } catch (e) {
-      print('Sync Download Error: \$e');
+      print('Sync Download Exception: $e');
       return false;
     }
   }

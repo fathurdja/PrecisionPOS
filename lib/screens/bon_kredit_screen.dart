@@ -89,9 +89,9 @@ class _BonKreditScreenState extends State<BonKreditScreen> {
       receiptNumber: widget.transaction.receiptNumber,
       tanggal: widget.transaction.tanggal,
       totalHarga: widget.transaction.totalHarga,
-      status: 'Bon · Belum Lunas',
+      status: 'pending',
       orderType: widget.transaction.orderType,
-      paymentMethod: widget.transaction.paymentMethod,
+      paymentMethod: 'bon',
       customerName: _nameController.text.trim().isNotEmpty 
           ? _nameController.text.trim() 
           : widget.transaction.customerName,

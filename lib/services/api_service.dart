@@ -1,11 +1,13 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart'; // for defaultTargetPlatform
 import 'api_config.dart';
+import 'api_client.dart';
 
 class ApiService {
+  final ApiClient _client = ApiClient();
+
   Future<Map<String, String>> _getDeviceInfo() async {
     String deviceName = 'Unknown Device';
     String platform = 'android';
@@ -37,11 +39,10 @@ class ApiService {
     try {
       final deviceInfo = await _getDeviceInfo();
       
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('${ApiConfig.baseUrl}/auth/login'),
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
         },
         body: jsonEncode({
           'username': username,
@@ -79,13 +80,8 @@ class ApiService {
 
   Future<Map<String, dynamic>> logout() async {
     try {
-      final token = await ApiConfig.getToken();
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('${ApiConfig.baseUrl}/auth/logout'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-        },
       );
       await ApiConfig.clearAuth();
       return {'success': response.statusCode == 200, 'message': 'Logout berhasil.'};
@@ -99,11 +95,10 @@ class ApiService {
     try {
       final deviceInfo = await _getDeviceInfo();
       
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('${ApiConfig.baseUrl}/auth/register'),
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
         },
         body: jsonEncode({
           'name': name,
@@ -142,10 +137,8 @@ class ApiService {
 
   Future<Map<String, dynamic>> getProducts() async {
     try {
-      final token = await ApiConfig.getToken();
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse('${ApiConfig.baseUrl}/products'),
-        headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
       );
       if (response.statusCode == 200) {
         return {'success': true, 'data': jsonDecode(response.body)['data']};
@@ -156,12 +149,10 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> getAnalyticsSummary() async {
+  Future<Map<String, dynamic>> getAnalyticsSummary({String period = 'week'}) async {
     try {
-      final token = await ApiConfig.getToken();
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/analytics/summary'),
-        headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
+      final response = await _client.get(
+        Uri.parse('${ApiConfig.baseUrl}/analytics/summary?period=$period'),
       );
       if (response.statusCode == 200) {
         return {'success': true, 'data': jsonDecode(response.body)};
@@ -174,10 +165,8 @@ class ApiService {
 
   Future<Map<String, dynamic>> getTransactions({int limit = 5}) async {
     try {
-      final token = await ApiConfig.getToken();
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/transactions?limit=$limit'),
-        headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
+      final response = await _client.get(
+        Uri.parse('${ApiConfig.baseUrl}/transactions?per_page=$limit'),
       );
       if (response.statusCode == 200) {
         return {'success': true, 'data': jsonDecode(response.body)['data'] ?? []};

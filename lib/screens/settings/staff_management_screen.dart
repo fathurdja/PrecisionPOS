@@ -30,6 +30,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     try {
       final db = await DatabaseHelper.instance.database;
       // Fetch staff details and calculate their total revenue from completed/non-void transactions
+      // Fetch staff details and calculate their total revenue from completed/non-voided transactions
       final List<Map<String, dynamic>> result = await db.rawQuery('''
         SELECT 
           s.id,
@@ -39,7 +40,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
           s.last_active,
           COALESCE(SUM(t.total_harga), 0.0) as calculated_revenue
         FROM staff s
-        LEFT JOIN transactions t ON s.name = t.cashier_name AND t.status != 'Void'
+        LEFT JOIN transactions t ON s.name = t.cashier_name AND t.status != 'voided'
         GROUP BY s.id
         ORDER BY s.id ASC
       ''');

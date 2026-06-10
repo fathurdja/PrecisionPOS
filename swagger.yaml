@@ -453,6 +453,46 @@ paths:
         '422':
           description: Validasi gagal
 
+  /auth/verify:
+    get:
+      tags: [Auth]
+      summary: Verify Token
+      description: Mengecek apakah token saat ini valid atau sudah expired tanpa terblokir oleh middleware.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Token valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authenticated:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Token is valid
+                  token:
+                    type: string
+                    example: "1|xyz..."
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Token tidak valid atau expired
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authenticated:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: Token is invalid or expired
+
   /auth/me:
     get:
       tags: [Auth]

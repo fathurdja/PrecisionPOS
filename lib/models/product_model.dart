@@ -24,16 +24,36 @@ class ProductModel {
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
+    double parseDouble(dynamic val) {
+      if (val == null) return 0.0;
+      if (val is num) return val.toDouble();
+      if (val is String) return double.tryParse(val) ?? 0.0;
+      return 0.0;
+    }
+    double? parseDoubleNullable(dynamic val) {
+      if (val == null) return null;
+      if (val is num) return val.toDouble();
+      if (val is String) return double.tryParse(val);
+      return null;
+    }
+    int parseInt(dynamic val) {
+      if (val == null) return 0;
+      if (val is int) return val;
+      if (val is num) return val.toInt();
+      if (val is String) return int.tryParse(val) ?? 0;
+      return 0;
+    }
+
     return ProductModel(
       id: json['id']?.toString() ?? '', // in case it was int previously
-      name: json['name'] ?? json['nama'] ?? 'Unknown',
-      categoryId: json['category_id'],
-      description: json['description'],
-      barcode: json['barcode'],
-      purchasePrice: json['purchase_price'] != null ? (json['purchase_price'] as num).toDouble() : null,
-      price: ((json['price'] ?? json['harga'] ?? 0) as num).toDouble(),
-      isActive: json['is_active'] == 1 || json['is_active'] == true,
-      stok: json['current_stock'] ?? json['stok'] ?? 0,
+      name: json['name']?.toString() ?? json['nama']?.toString() ?? 'Unknown',
+      categoryId: json['category_id']?.toString(),
+      description: json['description']?.toString(),
+      barcode: json['barcode']?.toString(),
+      purchasePrice: parseDoubleNullable(json['purchase_price']),
+      price: parseDouble(json['price'] ?? json['harga']),
+      isActive: json['is_active'] == 1 || json['is_active'] == true || json['is_active'] == '1' || json['is_active'] == 'true',
+      stok: parseInt(json['current_stock'] ?? json['stok']),
       variants: json['variants'],
     );
   }

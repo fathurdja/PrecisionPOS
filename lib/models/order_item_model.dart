@@ -18,14 +18,28 @@ class OrderItemModel {
   });
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
+    double parseDouble(dynamic val) {
+      if (val == null) return 0.0;
+      if (val is num) return val.toDouble();
+      if (val is String) return double.tryParse(val) ?? 0.0;
+      return 0.0;
+    }
+    int parseInt(dynamic val) {
+      if (val == null) return 0;
+      if (val is int) return val;
+      if (val is num) return val.toInt();
+      if (val is String) return int.tryParse(val) ?? 0;
+      return 0;
+    }
+
     return OrderItemModel(
-      id: json['id'] ?? '',
-      productId: json['product_id'] ?? json['product_id'].toString(), // backward compat
-      receiptId: json['receipt_number'] ?? json['receipt_id'] ?? '',
-      qty: (json['quantity'] ?? json['qty'] ?? 0) as int,
-      bonusQty: (json['bonus_qty'] ?? 0) as int,
-      unitPrice: ((json['unit_price'] ?? json['harga_satuan'] ?? 0) as num).toDouble(),
-      subtotal: ((json['subtotal'] ?? 0) as num).toDouble(),
+      id: json['id']?.toString() ?? '',
+      productId: json['product_id']?.toString() ?? '', // backward compat
+      receiptId: json['receipt_number']?.toString() ?? json['receipt_id']?.toString() ?? '',
+      qty: parseInt(json['quantity'] ?? json['qty']),
+      bonusQty: parseInt(json['bonus_qty']),
+      unitPrice: parseDouble(json['unit_price'] ?? json['harga_satuan']),
+      subtotal: parseDouble(json['subtotal']),
     );
   }
 

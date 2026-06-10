@@ -45,10 +45,17 @@ class TransactionModel {
     this.serviceAmount = 0.0,
     this.deviceId,
     this.items,
-    this.syncStatus = 'synced',
+    this.syncStatus = 'pending',
   });
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
+    double parseDouble(dynamic val) {
+      if (val == null) return 0.0;
+      if (val is num) return val.toDouble();
+      if (val is String) return double.tryParse(val) ?? 0.0;
+      return 0.0;
+    }
+    
     var itemsList = json['items'] as List?;
     List<OrderItemModel>? parsedItems;
     if (itemsList != null) {
@@ -56,24 +63,24 @@ class TransactionModel {
     }
 
     return TransactionModel(
-      id: json['id'] ?? '',
-      receiptNumber: json['receipt_number'] ?? json['receipt_id'] ?? '',
-      tanggal: json['created_at'] ?? json['tanggal'] ?? DateTime.now().toIso8601String(),
-      totalHarga: ((json['total_price'] ?? json['total_harga'] ?? 0) as num).toDouble(),
-      status: json['status'] ?? 'completed',
-      orderType: json['order_type'] ?? 'take-away',
-      paymentMethod: json['payment_method'] ?? 'cash',
-      taxAmount: ((json['tax_amount'] ?? 0) as num).toDouble(),
-      discountAmount: ((json['discount_amount'] ?? 0) as num).toDouble(),
-      receivedAmount: ((json['received_amount'] ?? 0) as num).toDouble(),
-      changeAmount: ((json['change_amount'] ?? 0) as num).toDouble(),
-      customerName: json['customer_name'],
-      customerPhone: json['customer_phone'],
-      cashierName: json['cashier_name'] ?? json['user_name'],
-      serviceAmount: ((json['service_amount'] ?? 0) as num).toDouble(),
-      deviceId: json['device_id'],
+      id: json['id']?.toString() ?? '',
+      receiptNumber: json['receipt_number']?.toString() ?? json['receipt_id']?.toString() ?? '',
+      tanggal: json['created_at']?.toString() ?? json['tanggal']?.toString() ?? DateTime.now().toIso8601String(),
+      totalHarga: parseDouble(json['total_price'] ?? json['total_harga']),
+      status: json['status']?.toString() ?? 'completed',
+      orderType: json['order_type']?.toString() ?? 'take-away',
+      paymentMethod: json['payment_method']?.toString() ?? 'cash',
+      taxAmount: parseDouble(json['tax_amount']),
+      discountAmount: parseDouble(json['discount_amount']),
+      receivedAmount: parseDouble(json['received_amount']),
+      changeAmount: parseDouble(json['change_amount']),
+      customerName: json['customer_name']?.toString(),
+      customerPhone: json['customer_phone']?.toString(),
+      cashierName: json['cashier_name']?.toString() ?? json['user_name']?.toString(),
+      serviceAmount: parseDouble(json['service_amount']),
+      deviceId: json['device_id'] != null ? int.tryParse(json['device_id'].toString()) : null,
       items: parsedItems,
-      syncStatus: json['sync_status'] ?? 'synced',
+      syncStatus: json['sync_status']?.toString() ?? 'synced',
     );
   }
 
